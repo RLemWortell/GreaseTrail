@@ -1,0 +1,26 @@
+{
+  "expo": {
+    "name": "GreaseTrail",
+    "slug": "greasetrail",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "dark",
+    "backgroundColor": "#0B0B0D",
+    "icon": "./assets/icon.png",
+    "splash": {
+      "backgroundColor": "#0B0B0D",
+      "resizeMode": "contain"
+    },
+    "assetBundlePatterns": ["**/*"],
+    "ios": {
+      "supportsTablet": false,
+      "bundleIdentifier": "com.lemairtech.greasetrail"
+    },
+    "android": {
+      "package": "com.lemairtech.greasetrail",
+      "adaptiveIcon": {
+        "backgroundColor": "#0B0B0D"
+      }
+    }
+  }
+}
