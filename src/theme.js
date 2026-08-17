@@ -1,53 +1,43 @@
-// GreaseTrail — Minimal theme. Hairlines, no cards, one alert colour.
-// Two schemes with identical keys; pick with useColorScheme() in App.js.
-
-export const LIGHT = {
-  bg: "#FCFCFB",
-  ink: "#1A1A18",       // primary text, active dots, emphasis rules
-  muted: "#9A9A95",     // labels, secondary values
-  faint: "#C2C2BC",     // placeholders, disabled
-  hairline: "#E8E8E4",  // row dividers
-  rule: "#1A1A18",      // section / action rules
-  dotOff: "#D6D6D0",    // outline dot border (on track)
-  photo: "#F1F1EE",     // image placeholder fill
-  alert: "#D8452F",     // overdue, destructive
-};
-
-export const DARK = {
-  bg: "#0F0F0E",
-  ink: "#F2F2EF",
-  muted: "#77776F",
-  faint: "#4A4A45",
-  hairline: "#262624",
-  rule: "#F2F2EF",
-  dotOff: "#3B3B37",
-  photo: "#1C1C1A",
-  alert: "#FF6A4D",     // half a step lighter than LIGHT.alert so it does not glare
+// GreaseTrail — garage layout. Beige ground, white cards, rust alerts.
+export const C = {
+  bg: "#F5F3EF",
+  card: "#FFFFFF",
+  ink: "#1A1A1A",
+  muted: "#A0A0A0",
+  faint: "#C4C0BA",
+  hairline: "#E6E3DE",
+  rule: "#2C2C2C",
+  accent: "#A65D46",
+  soon: "#6B6058",
+  iconBg: "#1A1A1A",
+  iconFg: "#FFFFFF",
+  tabOff: "#B3AEA8",
 };
 
 export const TYPE = {
-  odometer: { fontSize: 44, fontWeight: "300", letterSpacing: -2.4, fontVariant: ["tabular-nums"] },
-  title:    { fontSize: 26, fontWeight: "500", letterSpacing: -0.7 },
-  category: { fontSize: 18, fontWeight: "500" },
-  row:      { fontSize: 16, fontWeight: "400" },
-  body:     { fontSize: 15, fontWeight: "400" },
-  meta:     { fontSize: 13, fontWeight: "400" },
-  small:    { fontSize: 12.5, fontWeight: "400" },
-  label:    { fontSize: 12, fontWeight: "400", letterSpacing: 0.6, textTransform: "uppercase" },
+  odometer: { fontSize: 36, fontWeight: "300", letterSpacing: -1.6, fontVariant: ["tabular-nums"] },
+  title: { fontSize: 34, fontWeight: "700", letterSpacing: -0.6 },
+  name: { fontSize: 15, fontWeight: "700", letterSpacing: 0.4, textTransform: "uppercase" },
+  row: { fontSize: 16, fontWeight: "400" },
+  body: { fontSize: 15, fontWeight: "400" },
+  meta: { fontSize: 12, fontWeight: "400", letterSpacing: 0.4, textTransform: "uppercase" },
+  small: { fontSize: 12, fontWeight: "400" },
+  label: { fontSize: 11, fontWeight: "500", letterSpacing: 1.4, textTransform: "uppercase" },
+  date: { fontSize: 11, fontWeight: "500", letterSpacing: 1.6, textTransform: "uppercase" },
 };
 
 export const SPACE = {
-  side: 28,       // screen side padding
-  rowY: 15,       // vertical padding inside a hairline row
+  side: 22,
+  rowY: 16,
   fieldY: 14,
-  block: 30,      // gap between blocks
+  block: 28,
   hairline: 1,
+  radius: 16,
 };
 
-// Status -> dot treatment. null interval = no dot at all.
 export const DOT = {
-  overdue: (c) => ({ backgroundColor: c.alert }),
-  soon:    (c) => ({ backgroundColor: c.ink }),
-  ok:      (c) => ({ borderWidth: 1, borderColor: c.dotOff }),
-  none:    () => ({}),
+  overdue: { backgroundColor: C.accent },
+  soon: { backgroundColor: C.soon },
+  ok: { borderWidth: 1, borderColor: C.faint },
+  none: {},
 };

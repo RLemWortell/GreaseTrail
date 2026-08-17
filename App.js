@@ -1,12 +1,15 @@
 import React, { useState, useEffect, useRef } from "react";
-import { View, StyleSheet } from "react-native";
+import { StyleSheet } from "react-native";
 import { SafeAreaProvider, SafeAreaView } from "react-native-safe-area-context";
 import { StatusBar } from "expo-status-bar";
-import { T } from "./src/theme";
+import { C } from "./src/theme";
 import { loadVehicles, saveVehicles } from "./src/data/storage";
 import { seedDemoData } from "./src/data/templates";
+import { TabBar } from "./src/components/TopBar";
 
 import HomeScreen from "./src/screens/HomeScreen";
+import LogScreen from "./src/screens/LogScreen";
+import SetupScreen from "./src/screens/SetupScreen";
 import AddVehicleScreen from "./src/screens/AddVehicleScreen";
 import VehicleScreen from "./src/screens/VehicleScreen";
 import AddLogScreen from "./src/screens/AddLogScreen";
@@ -15,10 +18,10 @@ import ManageCategoriesScreen from "./src/screens/ManageCategoriesScreen";
 export default function App() {
   const [vehicles, setVehicles] = useState([]);
   const [ready, setReady] = useState(false);
-  const [screen, setScreen] = useState({ name: "home" });
+  const [tab, setTab] = useState("garage");
+  const [screen, setScreen] = useState({ name: "tabs" });
   const hasLoaded = useRef(false);
 
-  // Load persisted vehicles on first mount; fall back to demo data.
   useEffect(() => {
     (async () => {
       const stored = await loadVehicles();
@@ -28,7 +31,6 @@ export default function App() {
     })();
   }, []);
 
-  // Persist on every change, once initial load has completed.
   useEffect(() => {
     if (!hasLoaded.current) return;
     saveVehicles(vehicles);
@@ -50,32 +52,52 @@ export default function App() {
     setScreen({ name: "vehicle", vehicleId: vehicle.id });
   };
 
+  const openVehicle = (id) => setScreen({ name: "vehicle", vehicleId: id });
+  const addVehicle = () => setScreen({ name: "addVehicle" });
+
   if (!ready) {
     return (
       <SafeAreaProvider>
         <SafeAreaView style={styles.root} edges={["top", "bottom"]}>
-          <StatusBar style="light" />
+          <StatusBar style="dark" />
         </SafeAreaView>
       </SafeAreaProvider>
     );
   }
 
+  const showTabs = screen.name === "tabs";
+
   return (
     <SafeAreaProvider>
       <SafeAreaView style={styles.root} edges={["top", "bottom"]}>
-        <StatusBar style="light" />
+        <StatusBar style="dark" />
 
-        {screen.name === "home" && (
+        {showTabs && tab === "garage" && (
           <HomeScreen
             vehicles={vehicles}
-            onOpenVehicle={(id) => setScreen({ name: "vehicle", vehicleId: id })}
-            onAddVehicle={() => setScreen({ name: "addVehicle" })}
+            onOpenVehicle={openVehicle}
+            onAddVehicle={addVehicle}
+            onOpenCategory={(vehicleId, categoryId) =>
+              setScreen({ name: "addLog", vehicleId, categoryId, back: "tabs" })
+            }
+          />
+        )}
+
+        {showTabs && tab === "log" && (
+          <LogScreen vehicles={vehicles} onOpenVehicle={openVehicle} />
+        )}
+
+        {showTabs && tab === "setup" && (
+          <SetupScreen
+            vehicles={vehicles}
+            onAddVehicle={addVehicle}
+            onManageVehicle={(id) => setScreen({ name: "manage", vehicleId: id, back: "tabs" })}
           />
         )}
 
         {screen.name === "addVehicle" && (
           <AddVehicleScreen
-            onBack={() => setScreen({ name: "home" })}
+            onBack={() => setScreen({ name: "tabs" })}
             onSave={(v) => {
               setVehicles((vs) => [...vs, v]);
               setScreen({ name: "vehicle", vehicleId: v.id });
@@ -86,9 +108,11 @@ export default function App() {
         {screen.name === "vehicle" && vehicle && (
           <VehicleScreen
             vehicle={vehicle}
-            onBack={() => setScreen({ name: "home" })}
-            onOpenCategory={(catId) => setScreen({ name: "addLog", vehicleId: vehicle.id, categoryId: catId })}
-            onManage={() => setScreen({ name: "manage", vehicleId: vehicle.id })}
+            onBack={() => setScreen({ name: "tabs" })}
+            onOpenCategory={(catId) =>
+              setScreen({ name: "addLog", vehicleId: vehicle.id, categoryId: catId, back: "vehicle" })
+            }
+            onManage={() => setScreen({ name: "manage", vehicleId: vehicle.id, back: "vehicle" })}
             onUpdateOdo={(val) => updateVehicle({ ...vehicle, odometer: val })}
           />
         )}
@@ -97,7 +121,9 @@ export default function App() {
           <AddLogScreen
             vehicle={vehicle}
             category={category}
-            onBack={() => setScreen({ name: "vehicle", vehicleId: vehicle.id })}
+            onBack={() =>
+              setScreen(screen.back === "tabs" ? { name: "tabs" } : { name: "vehicle", vehicleId: vehicle.id })
+            }
             onSave={addLog}
           />
         )}
@@ -105,10 +131,14 @@ export default function App() {
         {screen.name === "manage" && vehicle && (
           <ManageCategoriesScreen
             vehicle={vehicle}
-            onBack={() => setScreen({ name: "vehicle", vehicleId: vehicle.id })}
+            onBack={() =>
+              setScreen(screen.back === "tabs" ? { name: "tabs" } : { name: "vehicle", vehicleId: vehicle.id })
+            }
             onUpdateVehicle={updateVehicle}
           />
         )}
+
+        {showTabs && <TabBar tab={tab} onChange={setTab} />}
       </SafeAreaView>
     </SafeAreaProvider>
   );
@@ -117,6 +147,6 @@ export default function App() {
 const styles = StyleSheet.create({
   root: {
     flex: 1,
-    backgroundColor: T.bgBase,
+    backgroundColor: C.bg,
   },
 });

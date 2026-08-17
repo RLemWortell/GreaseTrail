@@ -4,11 +4,11 @@
     "slug": "greasetrail",
     "version": "1.0.0",
     "orientation": "portrait",
-    "userInterfaceStyle": "dark",
-    "backgroundColor": "#0B0B0D",
+    "userInterfaceStyle": "light",
+    "backgroundColor": "#F5F3EF",
     "icon": "./assets/icon.png",
     "splash": {
-      "backgroundColor": "#0B0B0D",
+      "backgroundColor": "#F5F3EF",
       "resizeMode": "contain"
     },
     "assetBundlePatterns": ["**/*"],
@@ -19,7 +19,7 @@
     "android": {
       "package": "com.lemairtech.greasetrail",
       "adaptiveIcon": {
-        "backgroundColor": "#0B0B0D"
+        "backgroundColor": "#F5F3EF"
       }
     }
   }

@@ -1,90 +1,93 @@
 import React from "react";
-import { View, Text, TextInput as RNTextInput, TouchableOpacity, useColorScheme } from "react-native";
-import { LIGHT, DARK, TYPE, SPACE, DOT } from "../theme";
+import { View, Text, TextInput as RNTextInput, TouchableOpacity } from "react-native";
+import { Feather } from "@expo/vector-icons";
+import { C, TYPE, SPACE, DOT } from "../theme";
 
-export function useC() {
-  return useColorScheme() === "dark" ? DARK : LIGHT;
-}
-
-// Screen shell: fixed side padding, flat background.
 export function Screen({ children, style }) {
-  const c = useC();
-  return <View style={[{ flex: 1, backgroundColor: c.bg, paddingHorizontal: SPACE.side }, style]}>{children}</View>;
+  return <View style={[{ flex: 1, backgroundColor: C.bg, paddingHorizontal: SPACE.side }, style]}>{children}</View>;
 }
 
-// Small uppercase section label.
-export function Label({ children }) {
-  const c = useC();
-  return <Text style={[TYPE.label, { color: c.muted, marginBottom: 2 }]}>{children}</Text>;
-}
-
-// Screen title.
-export function Title({ children }) {
-  const c = useC();
-  return <Text style={[TYPE.title, { color: c.ink }]}>{children}</Text>;
-}
-
-// The workhorse: one hairline row. Left label/name, right value, optional dot and press.
-export function Row({ left, right, dot = "none", onPress, emphasis = false, top = false }) {
-  const c = useC();
+export function Card({ children, style, onPress }) {
   const Wrapper = onPress ? TouchableOpacity : View;
   return (
     <Wrapper
       onPress={onPress}
-      activeOpacity={0.6}
-      style={{
-        flexDirection: "row",
-        alignItems: "center",
-        gap: 12,
-        paddingVertical: SPACE.rowY,
-        borderBottomWidth: SPACE.hairline,
-        borderBottomColor: emphasis ? c.rule : c.hairline,
-        borderTopWidth: top ? SPACE.hairline : 0,
-        borderTopColor: c.rule,
-        minHeight: 48,
-      }}
+      activeOpacity={onPress ? 0.7 : 1}
+      style={[{ backgroundColor: C.card, borderRadius: SPACE.radius, overflow: "hidden" }, style]}
     >
-      {dot !== "hidden" && <Dot level={dot} />}
-      <View style={{ flex: 1 }}>{typeof left === "string" ? <Text style={[TYPE.row, { color: c.ink }]}>{left}</Text> : left}</View>
-      {typeof right === "string" ? <Text style={[TYPE.small, { color: c.muted }]}>{right}</Text> : right}
+      {children}
     </Wrapper>
   );
 }
 
-// 7px status dot. level: overdue | soon | ok | none
-export function Dot({ level = "none" }) {
-  const c = useC();
-  return <View style={[{ width: 7, height: 7, borderRadius: 3.5 }, DOT[level] ? DOT[level](c) : {}]} />;
+export function Label({ children, style }) {
+  return <Text style={[TYPE.label, { color: C.muted }, style]}>{children}</Text>;
 }
 
-// Underlined field: label left, value right. No box, no radius.
-export function Field({ label, value, unit, placeholder, emphasis = false, ...props }) {
-  const c = useC();
+export function Title({ children, style }) {
+  return <Text style={[TYPE.title, { color: C.ink }, style]}>{children}</Text>;
+}
+
+export function Dot({ level = "none" }) {
+  return <View style={[{ width: 7, height: 7, borderRadius: 3.5 }, DOT[level] || {}]} />;
+}
+
+export function IconButton({ icon, onPress, color = C.ink, size = 20 }) {
   return (
-    <View style={{
-      flexDirection: "row", alignItems: "baseline", gap: 12,
-      paddingVertical: SPACE.fieldY,
-      borderBottomWidth: SPACE.hairline,
-      borderBottomColor: emphasis ? c.rule : c.hairline,
-    }}>
-      <Text style={[TYPE.meta, { color: c.muted, flexShrink: 0 }]}>{label}</Text>
+    <TouchableOpacity onPress={onPress} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
+      <Feather name={icon} size={size} color={color} />
+    </TouchableOpacity>
+  );
+}
+
+export function PlusButton({ onPress }) {
+  return (
+    <TouchableOpacity
+      onPress={onPress}
+      activeOpacity={0.7}
+      style={{
+        width: 36,
+        height: 36,
+        borderRadius: 10,
+        borderWidth: 1,
+        borderColor: C.ink,
+        alignItems: "center",
+        justifyContent: "center",
+      }}
+    >
+      <Feather name="plus" size={18} color={C.ink} />
+    </TouchableOpacity>
+  );
+}
+
+export function Field({ label, value, unit, placeholder, emphasis = false, ...props }) {
+  return (
+    <View
+      style={{
+        flexDirection: "row",
+        alignItems: "baseline",
+        gap: 12,
+        paddingVertical: SPACE.fieldY,
+        borderBottomWidth: SPACE.hairline,
+        borderBottomColor: emphasis ? C.rule : C.hairline,
+      }}
+    >
+      <Text style={[TYPE.meta, { color: C.muted, flexShrink: 0 }]}>{label}</Text>
       <View style={{ flex: 1, flexDirection: "row", justifyContent: "flex-end", alignItems: "baseline", gap: 5 }}>
         <RNTextInput
           value={value}
           placeholder={placeholder}
-          placeholderTextColor={c.faint}
-          style={[TYPE.row, { color: c.ink, padding: 0, textAlign: "right", minWidth: 40 }]}
+          placeholderTextColor={C.faint}
+          style={[TYPE.row, { color: C.ink, padding: 0, textAlign: "right", minWidth: 40 }]}
           {...props}
         />
-        {unit ? <Text style={[TYPE.meta, { color: c.muted }]}>{unit}</Text> : null}
+        {unit ? <Text style={[TYPE.meta, { color: C.muted }]}>{unit}</Text> : null}
       </View>
     </View>
   );
 }
 
-// Radio list replacing ChipRow: one row per option, dot on the right.
 export function OptionList({ options, value, onChange, getKey = (o) => o, getLabel = (o) => o }) {
-  const c = useC();
   return (
     <View>
       {options.map((o) => {
@@ -95,16 +98,22 @@ export function OptionList({ options, value, onChange, getKey = (o) => o, getLab
             onPress={() => onChange(getKey(o))}
             activeOpacity={0.6}
             style={{
-              flexDirection: "row", alignItems: "center", justifyContent: "space-between",
-              paddingVertical: 13, minHeight: 48,
-              borderBottomWidth: SPACE.hairline, borderBottomColor: c.hairline,
+              flexDirection: "row",
+              alignItems: "center",
+              justifyContent: "space-between",
+              paddingVertical: 13,
+              minHeight: 48,
+              borderBottomWidth: SPACE.hairline,
+              borderBottomColor: C.hairline,
             }}
           >
-            <Text style={[TYPE.row, { color: c.ink }]}>{getLabel(o)}</Text>
-            <View style={[
-              { width: 8, height: 8, borderRadius: 4 },
-              active ? { backgroundColor: c.ink } : { borderWidth: 1, borderColor: c.dotOff },
-            ]} />
+            <Text style={[TYPE.row, { color: C.ink }]}>{getLabel(o)}</Text>
+            <View
+              style={[
+                { width: 8, height: 8, borderRadius: 4 },
+                active ? { backgroundColor: C.ink } : { borderWidth: 1, borderColor: C.faint },
+              ]}
+            />
           </TouchableOpacity>
         );
       })}
@@ -112,16 +121,38 @@ export function OptionList({ options, value, onChange, getKey = (o) => o, getLab
   );
 }
 
-// Primary action: a hairline-topped text row, pinned to the bottom of the screen.
 export function Action({ label, onPress, destructive = false }) {
-  const c = useC();
   return (
     <TouchableOpacity
       onPress={onPress}
       activeOpacity={0.6}
-      style={{ borderTopWidth: SPACE.hairline, borderTopColor: c.rule, paddingTop: 15, minHeight: 48 }}
+      style={{ borderTopWidth: SPACE.hairline, borderTopColor: C.rule, paddingTop: 15, minHeight: 48 }}
     >
-      <Text style={[TYPE.body, { color: destructive ? c.alert : c.ink, fontWeight: "500" }]}>{label}</Text>
+      <Text style={[TYPE.body, { color: destructive ? C.accent : C.ink, fontWeight: "500" }]}>{label}</Text>
     </TouchableOpacity>
+  );
+}
+
+export function SearchField({ value, onChangeText, placeholder = "Search vehicles." }) {
+  return (
+    <View
+      style={{
+        flexDirection: "row",
+        alignItems: "center",
+        gap: 10,
+        paddingBottom: 10,
+        borderBottomWidth: SPACE.hairline,
+        borderBottomColor: C.hairline,
+      }}
+    >
+      <Feather name="search" size={16} color={C.muted} />
+      <RNTextInput
+        value={value}
+        onChangeText={onChangeText}
+        placeholder={placeholder}
+        placeholderTextColor={C.muted}
+        style={[TYPE.body, { flex: 1, color: C.ink, padding: 0 }]}
+      />
+    </View>
   );
 }

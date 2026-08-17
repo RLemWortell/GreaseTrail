@@ -1,7 +1,7 @@
 import React, { useState } from "react";
-import { View, Text, ScrollView } from "react-native";
-import { T } from "../theme";
-import { Panel, TextInput, FieldLabel, ChipRow, PrimaryButton } from "../components/ui";
+import { View, ScrollView } from "react-native";
+import { SPACE } from "../theme";
+import { Field, OptionList, Action } from "../components/ui";
 import { TYPE_META, seedVehicle } from "../data/templates";
 import TopBar from "../components/TopBar";
 
@@ -14,50 +14,33 @@ export default function AddVehicleScreen({ onBack, onSave }) {
   const typeOptions = Object.entries(TYPE_META).map(([key, meta]) => ({ key, label: meta.label }));
 
   return (
-    <View>
-      <TopBar title="Add vehicle" onBack={onBack} />
-      <ScrollView contentContainerStyle={{ padding: 16 }} keyboardShouldPersistTaps="handled">
-        <Panel style={{ padding: 14, gap: 14 }}>
-          <View>
-            <FieldLabel>Type</FieldLabel>
-            <ChipRow
-              options={typeOptions}
-              value={type}
-              onChange={setType}
-              getKey={(o) => o.key}
-              getLabel={(o) => o.label}
-            />
-          </View>
-
-          <View>
-            <FieldLabel>Name</FieldLabel>
-            <TextInput value={name} onChangeText={setName} placeholder="e.g. Suzuki V-Strom" />
-          </View>
-
-          <View>
-            <FieldLabel>Model / details (optional)</FieldLabel>
-            <TextInput value={model} onChangeText={setModel} placeholder="e.g. DL650, 2019" />
-          </View>
-
-          <View>
-            <FieldLabel>Current odometer (km)</FieldLabel>
-            <TextInput value={odo} onChangeText={setOdo} placeholder="0" keyboardType="numeric" />
-          </View>
-
-          <Text style={{ color: T.textSecondary, fontSize: 12, lineHeight: 17 }}>
-            Standard categories for this vehicle type will be added automatically — you can edit, remove or add
-            your own afterwards from the vehicle's settings.
-          </Text>
-
-          <PrimaryButton
+    <View style={{ flex: 1 }}>
+      <View style={{ paddingHorizontal: SPACE.side }}>
+        <TopBar title="Add vehicle" onBack={onBack} />
+      </View>
+      <ScrollView
+        contentContainerStyle={{ paddingHorizontal: SPACE.side, paddingBottom: 32 }}
+        keyboardShouldPersistTaps="handled"
+      >
+        <OptionList
+          options={typeOptions}
+          value={type}
+          onChange={setType}
+          getKey={(o) => o.key}
+          getLabel={(o) => o.label}
+        />
+        <Field label="Name" value={name} onChangeText={setName} placeholder="Suzuki V-Strom" />
+        <Field label="Model" value={model} onChangeText={setModel} placeholder="DL650" />
+        <Field label="Odometer" value={odo} onChangeText={setOdo} placeholder="0" unit="km" keyboardType="numeric" />
+        <View style={{ marginTop: 28 }}>
+          <Action
             label="Create vehicle"
-            icon="check"
             onPress={() => {
               if (!name.trim()) return;
               onSave(seedVehicle(type, name.trim(), model.trim(), Number(odo) || 0));
             }}
           />
-        </Panel>
+        </View>
       </ScrollView>
     </View>
   );

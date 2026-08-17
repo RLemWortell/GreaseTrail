@@ -118,12 +118,91 @@ export function seedVehicle(type, name, model, odo) {
   };
 }
 
+export function formatKm(n) {
+  return Math.round(Math.abs(n))
+    .toString()
+    .replace(/\B(?=(\d{3})+(?!\d))/g, " ");
+}
+
+export function formatHeaderDate(d = new Date()) {
+  const day = d.getDate();
+  const mon = d.toLocaleString("en-GB", { month: "short" }).toUpperCase();
+  return `${day} ${mon} ${d.getFullYear()}`;
+}
+
+function lastLog(vehicle, category) {
+  return vehicle.logs
+    .filter((l) => l.categoryId === category.id)
+    .sort((a, b) => new Date(b.date) - new Date(a.date))[0];
+}
+
+export function getDueLabel(vehicle, category) {
+  const last = lastLog(vehicle, category);
+  if (!last) return "NEVER";
+
+  let kmRatio = 0;
+  let monthRatio = 0;
+  let kmDelta = null;
+  let dayDelta = null;
+
+  if (category.intervalKm) {
+    kmDelta = vehicle.odometer - last.odometer - category.intervalKm;
+    kmRatio = (vehicle.odometer - last.odometer) / category.intervalKm;
+  }
+  if (category.intervalMonths) {
+    const intervalDays = category.intervalMonths * 30.44;
+    const daysSince = (Date.now() - new Date(last.date).getTime()) / 86400000;
+    dayDelta = daysSince - intervalDays;
+    monthRatio = daysSince / intervalDays;
+  }
+
+  const useDays = monthRatio >= kmRatio && dayDelta != null;
+  if (useDays) return dayDelta >= 0 ? `+${Math.round(dayDelta)} DAYS` : `${Math.round(-dayDelta)} DAYS`;
+  if (kmDelta != null) return kmDelta >= 0 ? `+${formatKm(kmDelta)} KM` : `${formatKm(-kmDelta)} KM`;
+  return "";
+}
+
+export function getAttentionItems(vehicle) {
+  return vehicle.categories
+    .map((c) => {
+      const status = getStatus(vehicle, c);
+      if (!status || status.level === "ok") return null;
+      return {
+        vehicleId: vehicle.id,
+        vehicleName: vehicle.name,
+        categoryId: c.id,
+        name: c.name,
+        level: status.level,
+        label: getDueLabel(vehicle, c),
+        ratio: status.ratio,
+        never: !status.last,
+      };
+    })
+    .filter(Boolean)
+    .sort((a, b) => {
+      const rank = (item) => {
+        if (item.level === "overdue" && !item.never) return 0;
+        if (item.level === "overdue") return 1;
+        return 2;
+      };
+      if (rank(a) !== rank(b)) return rank(a) - rank(b);
+      return b.ratio - a.ratio;
+    });
+}
+
 export function seedDemoData() {
   const v = seedVehicle("motorcycle", "Suzuki V-Strom", "DL650", 34210);
+  const byName = (name) => v.categories.find((c) => c.name === name);
+  const tire = byName("Tire pressure");
+  const oil = byName("Oil change");
+  const chain = byName("Chain tension");
+  const brakes = byName("Brake pads");
+  const coolant = byName("Coolant");
+
   v.logs = [
     {
       id: uid(),
-      categoryId: v.categories[0].id,
+      categoryId: chain.id,
       categoryName: "Chain tension",
       date: daysAgo(45),
       odometer: 33800,
@@ -132,12 +211,39 @@ export function seedDemoData() {
     },
     {
       id: uid(),
-      categoryId: v.categories[1].id,
+      categoryId: oil.id,
       categoryName: "Oil change",
       date: daysAgo(120),
-      odometer: 30500,
+      odometer: 28600,
       values: { Type: "With filter", "Amount added": "3.2" },
       note: "10W-40 fully synthetic",
+    },
+    {
+      id: uid(),
+      categoryId: tire.id,
+      categoryName: "Tire pressure",
+      date: daysAgo(48),
+      odometer: 33980,
+      values: { Front: "2.3", Rear: "2.5" },
+      note: "",
+    },
+    {
+      id: uid(),
+      categoryId: brakes.id,
+      categoryName: "Brake pads",
+      date: daysAgo(80),
+      odometer: 32000,
+      values: { Front: "4.2", Rear: "5.0" },
+      note: "",
+    },
+    {
+      id: uid(),
+      categoryId: coolant.id,
+      categoryName: "Coolant",
+      date: daysAgo(40),
+      odometer: 34000,
+      values: { "Topped up": "0.2" },
+      note: "",
     },
   ];
   return [v];
