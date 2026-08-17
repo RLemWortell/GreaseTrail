@@ -1,18 +1,53 @@
-// Clean, flat, mobile-first dark palette. One accent, used sparingly.
-export const T = {
-  bgBase: "#0B0B0D",
-  bgSurface: "#17171A",
-  bgSurfaceRaised: "#1D1D21",
-  hairline: "rgba(255,255,255,0.09)",
-  textPrimary: "#F5F5F6",
-  textSecondary: "#8A8A92",
-  textTertiary: "#5C5C63",
-  accent: "#8400FF",
-  accentSoft: "rgba(132,0,255,0.16)",
-  green: "#3DD16F",
-  greenSoft: "rgba(61,209,111,0.16)",
-  amber: "#F0A63C",
-  amberSoft: "rgba(240,166,60,0.16)",
-  red: "#F0554E",
-  redSoft: "rgba(240,85,78,0.16)",
+// GreaseTrail — Minimal theme. Hairlines, no cards, one alert colour.
+// Two schemes with identical keys; pick with useColorScheme() in App.js.
+
+export const LIGHT = {
+  bg: "#FCFCFB",
+  ink: "#1A1A18",       // primary text, active dots, emphasis rules
+  muted: "#9A9A95",     // labels, secondary values
+  faint: "#C2C2BC",     // placeholders, disabled
+  hairline: "#E8E8E4",  // row dividers
+  rule: "#1A1A18",      // section / action rules
+  dotOff: "#D6D6D0",    // outline dot border (on track)
+  photo: "#F1F1EE",     // image placeholder fill
+  alert: "#D8452F",     // overdue, destructive
+};
+
+export const DARK = {
+  bg: "#0F0F0E",
+  ink: "#F2F2EF",
+  muted: "#77776F",
+  faint: "#4A4A45",
+  hairline: "#262624",
+  rule: "#F2F2EF",
+  dotOff: "#3B3B37",
+  photo: "#1C1C1A",
+  alert: "#FF6A4D",     // half a step lighter than LIGHT.alert so it does not glare
+};
+
+export const TYPE = {
+  odometer: { fontSize: 44, fontWeight: "300", letterSpacing: -2.4, fontVariant: ["tabular-nums"] },
+  title:    { fontSize: 26, fontWeight: "500", letterSpacing: -0.7 },
+  category: { fontSize: 18, fontWeight: "500" },
+  row:      { fontSize: 16, fontWeight: "400" },
+  body:     { fontSize: 15, fontWeight: "400" },
+  meta:     { fontSize: 13, fontWeight: "400" },
+  small:    { fontSize: 12.5, fontWeight: "400" },
+  label:    { fontSize: 12, fontWeight: "400", letterSpacing: 0.6, textTransform: "uppercase" },
+};
+
+export const SPACE = {
+  side: 28,       // screen side padding
+  rowY: 15,       // vertical padding inside a hairline row
+  fieldY: 14,
+  block: 30,      // gap between blocks
+  hairline: 1,
+};
+
+// Status -> dot treatment. null interval = no dot at all.
+export const DOT = {
+  overdue: (c) => ({ backgroundColor: c.alert }),
+  soon:    (c) => ({ backgroundColor: c.ink }),
+  ok:      (c) => ({ borderWidth: 1, borderColor: c.dotOff }),
+  none:    () => ({}),
 };
