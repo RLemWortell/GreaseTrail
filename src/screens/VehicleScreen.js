@@ -1,128 +1,109 @@
 import React, { useState } from "react";
-import { View, Text, ScrollView, StyleSheet } from "react-native";
-import { T } from "../theme";
-import { Panel, TextInput, FieldLabel, Badge, SectionLabel } from "../components/ui";
-import { IconButton } from "../components/ui";
-import { getStatus, STATUS_LABEL } from "../data/templates";
+import { View, Text, ScrollView, TouchableOpacity } from "react-native";
+import { C, TYPE, SPACE } from "../theme";
+import { Card, Field, Dot, IconButton } from "../components/ui";
 import TopBar from "../components/TopBar";
-
-const STATUS_COLOR = { overdue: T.red, soon: T.amber, ok: T.green };
-const STATUS_SOFT = { overdue: T.redSoft, soon: T.amberSoft, ok: T.greenSoft };
-const STATUS_ICON = { overdue: "alert-triangle", soon: "clock", ok: "check" };
+import { getStatus, getDueLabel, formatKm } from "../data/templates";
 
 export default function VehicleScreen({ vehicle, onBack, onOpenCategory, onManage, onUpdateOdo }) {
   const [odoInput, setOdoInput] = useState(String(vehicle.odometer));
   const allLogs = [...vehicle.logs].sort((a, b) => new Date(b.date) - new Date(a.date));
 
   return (
-    <View>
-      <TopBar
-        title={vehicle.name}
-        onBack={onBack}
-        right={<IconButton icon="settings" onPress={onManage} />}
-      />
-      <ScrollView contentContainerStyle={{ padding: 16 }} keyboardShouldPersistTaps="handled">
-        <Panel style={{ padding: 14, marginBottom: 16 }}>
-          <FieldLabel>Current reading (km)</FieldLabel>
-          <TextInput
-            value={odoInput}
-            onChangeText={setOdoInput}
-            keyboardType="numeric"
-            onBlur={() => onUpdateOdo(Number(odoInput) || 0)}
-          />
-        </Panel>
+    <View style={{ flex: 1 }}>
+      <View style={{ paddingHorizontal: SPACE.side }}>
+        <TopBar
+          title={vehicle.name}
+          onBack={onBack}
+          right={<IconButton icon="settings" onPress={onManage} />}
+        />
+      </View>
+      <ScrollView
+        contentContainerStyle={{ paddingHorizontal: SPACE.side, paddingBottom: 32 }}
+        keyboardShouldPersistTaps="handled"
+        showsVerticalScrollIndicator={false}
+      >
+        <Text style={[TYPE.label, { color: C.muted, marginTop: 4 }]}>Odometer</Text>
+        <Field
+          label="Reading"
+          value={odoInput}
+          unit="km"
+          keyboardType="numeric"
+          onChangeText={setOdoInput}
+          onBlur={() => onUpdateOdo(Number(odoInput) || 0)}
+          emphasis
+        />
 
-        <SectionLabel>Maintenance categories</SectionLabel>
-        <View style={{ gap: 10, marginBottom: 22 }}>
-          {vehicle.categories.map((c) => {
+        <View style={{ flexDirection: "row", alignItems: "center", gap: 12, marginTop: 32, marginBottom: 12 }}>
+          <Text style={[TYPE.label, { color: C.muted }]}>Categories</Text>
+          <View style={{ flex: 1, height: SPACE.hairline, backgroundColor: C.ink, opacity: 0.85 }} />
+        </View>
+
+        <Card>
+          {vehicle.categories.map((c, i) => {
             const status = getStatus(vehicle, c);
+            const level = status?.level || "none";
             return (
-              <Panel key={c.id} onPress={() => onOpenCategory(c.id)} style={styles.categoryRow}>
-                <View style={{ flex: 1 }}>
-                  <Text style={styles.categoryName}>{c.name}</Text>
-                  <Text style={styles.categoryMeta}>
-                    {status?.last
-                      ? `Last: ${status.last.date} · ${status.last.odometer.toLocaleString()} km`
-                      : "No entries yet"}
-                  </Text>
-                </View>
-                {status && (
-                  <Badge
-                    color={STATUS_COLOR[status.level]}
-                    softColor={STATUS_SOFT[status.level]}
-                    icon={STATUS_ICON[status.level]}
-                    text={STATUS_LABEL[status.level]}
-                  />
-                )}
-              </Panel>
+              <TouchableOpacity
+                key={c.id}
+                onPress={() => onOpenCategory(c.id)}
+                activeOpacity={0.7}
+                style={{
+                  flexDirection: "row",
+                  alignItems: "center",
+                  gap: 12,
+                  paddingHorizontal: 16,
+                  paddingVertical: SPACE.rowY,
+                  borderBottomWidth: i < vehicle.categories.length - 1 ? SPACE.hairline : 0,
+                  borderBottomColor: C.hairline,
+                  minHeight: 52,
+                }}
+              >
+                <Dot level={level} />
+                <Text style={[TYPE.row, { color: C.ink, flex: 1 }]}>{c.name}</Text>
+                <Text style={[TYPE.small, { color: C.muted, letterSpacing: 0.6, textTransform: "uppercase" }]}>
+                  {status ? getDueLabel(vehicle, c) : ""}
+                </Text>
+              </TouchableOpacity>
             );
           })}
+        </Card>
+
+        <View style={{ flexDirection: "row", alignItems: "center", gap: 12, marginTop: 32, marginBottom: 12 }}>
+          <Text style={[TYPE.label, { color: C.muted }]}>History</Text>
+          <View style={{ flex: 1, height: SPACE.hairline, backgroundColor: C.ink, opacity: 0.85 }} />
         </View>
 
-        <SectionLabel>Log history</SectionLabel>
-        <View style={{ gap: 8 }}>
-          {allLogs.length === 0 && (
-            <Text style={{ color: T.textSecondary, fontSize: 13, paddingVertical: 8 }}>
-              Nothing logged yet — tap a category above to add the first entry.
-            </Text>
-          )}
-          {allLogs.map((l) => (
-            <Panel key={l.id} style={{ padding: 12 }}>
-              <View style={{ flexDirection: "row", justifyContent: "space-between" }}>
-                <Text style={styles.logTitle}>{l.categoryName}</Text>
-                <Text style={styles.logDate}>{l.date}</Text>
+        {allLogs.length === 0 ? (
+          <Text style={{ color: C.muted, fontSize: 14 }}>Nothing logged yet.</Text>
+        ) : (
+          <Card>
+            {allLogs.map((l, i) => (
+              <View
+                key={l.id}
+                style={{
+                  paddingHorizontal: 16,
+                  paddingVertical: 14,
+                  borderBottomWidth: i < allLogs.length - 1 ? SPACE.hairline : 0,
+                  borderBottomColor: C.hairline,
+                }}
+              >
+                <View style={{ flexDirection: "row", justifyContent: "space-between" }}>
+                  <Text style={[TYPE.row, { color: C.ink }]}>{l.categoryName}</Text>
+                  <Text style={[TYPE.small, { color: C.muted }]}>{l.date}</Text>
+                </View>
+                <Text style={[TYPE.small, { color: C.muted, marginTop: 4 }]}>
+                  {formatKm(l.odometer)} km
+                  {Object.entries(l.values)
+                    .filter(([, v]) => v)
+                    .map(([k, v]) => `  ·  ${k}: ${v}`)
+                    .join("")}
+                </Text>
               </View>
-              <Text style={styles.logMeta}>
-                {l.odometer.toLocaleString()} km
-                {Object.entries(l.values)
-                  .filter(([, v]) => v)
-                  .map(([k, v]) => ` · ${k}: ${v}`)
-                  .join("")}
-              </Text>
-              {!!l.note && <Text style={styles.logNote}>{l.note}</Text>}
-            </Panel>
-          ))}
-        </View>
+            ))}
+          </Card>
+        )}
       </ScrollView>
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  categoryRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    padding: 14,
-    gap: 10,
-  },
-  categoryName: {
-    color: T.textPrimary,
-    fontWeight: "600",
-    fontSize: 14.5,
-  },
-  categoryMeta: {
-    color: T.textSecondary,
-    fontSize: 12,
-    marginTop: 2,
-  },
-  logTitle: {
-    color: T.textPrimary,
-    fontWeight: "600",
-    fontSize: 13.5,
-  },
-  logDate: {
-    color: T.textSecondary,
-    fontSize: 12,
-  },
-  logMeta: {
-    color: T.textSecondary,
-    fontSize: 12,
-    marginTop: 4,
-  },
-  logNote: {
-    color: T.textSecondary,
-    fontSize: 12,
-    marginTop: 4,
-    fontStyle: "italic",
-  },
-});
