@@ -1,77 +1,110 @@
 import React from "react";
-import {
-  View,
-  Text,
-  TextInput as RNTextInput,
-  TouchableOpacity,
-  StyleSheet,
-} from "react-native";
-import { Feather } from "@expo/vector-icons";
-import { T } from "../theme";
+import { View, Text, TextInput as RNTextInput, TouchableOpacity, useColorScheme } from "react-native";
+import { LIGHT, DARK, TYPE, SPACE, DOT } from "../theme";
 
-export function Panel({ children, style, onPress }) {
+export function useC() {
+  return useColorScheme() === "dark" ? DARK : LIGHT;
+}
+
+// Screen shell: fixed side padding, flat background.
+export function Screen({ children, style }) {
+  const c = useC();
+  return <View style={[{ flex: 1, backgroundColor: c.bg, paddingHorizontal: SPACE.side }, style]}>{children}</View>;
+}
+
+// Small uppercase section label.
+export function Label({ children }) {
+  const c = useC();
+  return <Text style={[TYPE.label, { color: c.muted, marginBottom: 2 }]}>{children}</Text>;
+}
+
+// Screen title.
+export function Title({ children }) {
+  const c = useC();
+  return <Text style={[TYPE.title, { color: c.ink }]}>{children}</Text>;
+}
+
+// The workhorse: one hairline row. Left label/name, right value, optional dot and press.
+export function Row({ left, right, dot = "none", onPress, emphasis = false, top = false }) {
+  const c = useC();
   const Wrapper = onPress ? TouchableOpacity : View;
   return (
     <Wrapper
       onPress={onPress}
-      activeOpacity={onPress ? 0.7 : 1}
-      style={[styles.panel, style]}
+      activeOpacity={0.6}
+      style={{
+        flexDirection: "row",
+        alignItems: "center",
+        gap: 12,
+        paddingVertical: SPACE.rowY,
+        borderBottomWidth: SPACE.hairline,
+        borderBottomColor: emphasis ? c.rule : c.hairline,
+        borderTopWidth: top ? SPACE.hairline : 0,
+        borderTopColor: c.rule,
+        minHeight: 48,
+      }}
     >
-      {children}
+      {dot !== "hidden" && <Dot level={dot} />}
+      <View style={{ flex: 1 }}>{typeof left === "string" ? <Text style={[TYPE.row, { color: c.ink }]}>{left}</Text> : left}</View>
+      {typeof right === "string" ? <Text style={[TYPE.small, { color: c.muted }]}>{right}</Text> : right}
     </Wrapper>
   );
 }
 
-export function PrimaryButton({ label, onPress, icon, style, textStyle, disabled }) {
+// 7px status dot. level: overdue | soon | ok | none
+export function Dot({ level = "none" }) {
+  const c = useC();
+  return <View style={[{ width: 7, height: 7, borderRadius: 3.5 }, DOT[level] ? DOT[level](c) : {}]} />;
+}
+
+// Underlined field: label left, value right. No box, no radius.
+export function Field({ label, value, unit, placeholder, emphasis = false, ...props }) {
+  const c = useC();
   return (
-    <TouchableOpacity
-      onPress={onPress}
-      activeOpacity={0.8}
-      disabled={disabled}
-      style={[styles.primaryButton, disabled && { opacity: 0.5 }, style]}
-    >
-      {icon ? <Feather name={icon} size={16} color={textStyle?.color || "#fff"} style={{ marginRight: 6 }} /> : null}
-      <Text style={[styles.primaryButtonText, textStyle]}>{label}</Text>
-    </TouchableOpacity>
+    <View style={{
+      flexDirection: "row", alignItems: "baseline", gap: 12,
+      paddingVertical: SPACE.fieldY,
+      borderBottomWidth: SPACE.hairline,
+      borderBottomColor: emphasis ? c.rule : c.hairline,
+    }}>
+      <Text style={[TYPE.meta, { color: c.muted, flexShrink: 0 }]}>{label}</Text>
+      <View style={{ flex: 1, flexDirection: "row", justifyContent: "flex-end", alignItems: "baseline", gap: 5 }}>
+        <RNTextInput
+          value={value}
+          placeholder={placeholder}
+          placeholderTextColor={c.faint}
+          style={[TYPE.row, { color: c.ink, padding: 0, textAlign: "right", minWidth: 40 }]}
+          {...props}
+        />
+        {unit ? <Text style={[TYPE.meta, { color: c.muted }]}>{unit}</Text> : null}
+      </View>
+    </View>
   );
 }
 
-export function IconButton({ icon, onPress, color = T.textPrimary, size = 19 }) {
+// Radio list replacing ChipRow: one row per option, dot on the right.
+export function OptionList({ options, value, onChange, getKey = (o) => o, getLabel = (o) => o }) {
+  const c = useC();
   return (
-    <TouchableOpacity onPress={onPress} style={styles.iconButton} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
-      <Feather name={icon} size={size} color={color} />
-    </TouchableOpacity>
-  );
-}
-
-export function FieldLabel({ children }) {
-  return <Text style={styles.label}>{children}</Text>;
-}
-
-export function TextInput({ style, ...props }) {
-  return (
-    <RNTextInput
-      placeholderTextColor={T.textTertiary}
-      style={[styles.input, style]}
-      {...props}
-    />
-  );
-}
-
-// Horizontal row of pressable chips — used for vehicle type and select-type fields
-export function ChipRow({ options, value, onChange, getLabel = (o) => o, getKey = (o) => o }) {
-  return (
-    <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
-      {options.map((opt) => {
-        const active = getKey(opt) === value;
+    <View>
+      {options.map((o) => {
+        const active = getKey(o) === value;
         return (
           <TouchableOpacity
-            key={getKey(opt)}
-            onPress={() => onChange(getKey(opt))}
-            activeOpacity={0.7}
-            style={[styles.chip, active && styles.chipActive]}
+            key={getKey(o)}
+            onPress={() => onChange(getKey(o))}
+            activeOpacity={0.6}
+            style={{
+              flexDirection: "row", alignItems: "center", justifyContent: "space-between",
+              paddingVertical: 13, minHeight: 48,
+              borderBottomWidth: SPACE.hairline, borderBottomColor: c.hairline,
+            }}
           >
-            <Text style={[styles.chipText, active && styles.chipTextActive]}>{getLabel(opt)}</Text>
+            <Text style={[TYPE.row, { color: c.ink }]}>{getLabel(o)}</Text>
+            <View style={[
+              { width: 8, height: 8, borderRadius: 4 },
+              active ? { backgroundColor: c.ink } : { borderWidth: 1, borderColor: c.dotOff },
+            ]} />
           </TouchableOpacity>
         );
       })}
@@ -79,103 +112,16 @@ export function ChipRow({ options, value, onChange, getLabel = (o) => o, getKey 
   );
 }
 
-export function Badge({ color, softColor, icon, text }) {
+// Primary action: a hairline-topped text row, pinned to the bottom of the screen.
+export function Action({ label, onPress, destructive = false }) {
+  const c = useC();
   return (
-    <View style={[styles.badge, { backgroundColor: softColor }]}>
-      <Feather name={icon} size={11} color={color} style={{ marginRight: 4 }} />
-      <Text style={[styles.badgeText, { color }]}>{text}</Text>
-    </View>
+    <TouchableOpacity
+      onPress={onPress}
+      activeOpacity={0.6}
+      style={{ borderTopWidth: SPACE.hairline, borderTopColor: c.rule, paddingTop: 15, minHeight: 48 }}
+    >
+      <Text style={[TYPE.body, { color: destructive ? c.alert : c.ink, fontWeight: "500" }]}>{label}</Text>
+    </TouchableOpacity>
   );
 }
-
-export function SectionLabel({ children }) {
-  return <Text style={styles.sectionLabel}>{children}</Text>;
-}
-
-const styles = StyleSheet.create({
-  panel: {
-    backgroundColor: T.bgSurface,
-    borderWidth: 1,
-    borderColor: T.hairline,
-    borderRadius: 14,
-  },
-  primaryButton: {
-    backgroundColor: T.accent,
-    borderRadius: 12,
-    paddingVertical: 14,
-    paddingHorizontal: 16,
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    minHeight: 48,
-  },
-  primaryButtonText: {
-    color: "#fff",
-    fontWeight: "600",
-    fontSize: 15,
-  },
-  iconButton: {
-    width: 38,
-    height: 38,
-    borderRadius: 10,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  label: {
-    color: T.textSecondary,
-    fontSize: 12.5,
-    marginBottom: 7,
-    fontWeight: "500",
-  },
-  input: {
-    width: "100%",
-    backgroundColor: T.bgSurfaceRaised,
-    borderWidth: 1,
-    borderColor: T.hairline,
-    borderRadius: 10,
-    paddingVertical: 12,
-    paddingHorizontal: 13,
-    color: T.textPrimary,
-    fontSize: 15,
-    minHeight: 46,
-  },
-  chip: {
-    paddingVertical: 10,
-    paddingHorizontal: 12,
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: T.hairline,
-    backgroundColor: T.bgSurfaceRaised,
-  },
-  chipActive: {
-    borderColor: T.accent,
-    backgroundColor: T.accentSoft,
-  },
-  chipText: {
-    color: T.textSecondary,
-    fontSize: 12.5,
-    fontWeight: "600",
-  },
-  chipTextActive: {
-    color: T.accent,
-  },
-  badge: {
-    flexDirection: "row",
-    alignItems: "center",
-    borderRadius: 6,
-    paddingVertical: 4,
-    paddingHorizontal: 8,
-  },
-  badgeText: {
-    fontSize: 12,
-    fontWeight: "600",
-  },
-  sectionLabel: {
-    color: T.textSecondary,
-    fontSize: 12,
-    fontWeight: "600",
-    letterSpacing: 0.5,
-    marginBottom: 10,
-    textTransform: "uppercase",
-  },
-});
