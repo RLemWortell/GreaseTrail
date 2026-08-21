@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../format.dart';
 import '../models.dart';
 import '../theme.dart';
 import '../widgets/ui.dart';
@@ -22,6 +23,13 @@ class HomeScreen extends StatefulWidget {
   State<HomeScreen> createState() => _HomeScreenState();
 }
 
+class _AttentionRow {
+  final AttentionItem item;
+  final String vehicleId;
+  final String vehicleName;
+  _AttentionRow(this.item, this.vehicleId, this.vehicleName);
+}
+
 class _HomeScreenState extends State<HomeScreen> {
   String _query = '';
 
@@ -33,94 +41,55 @@ class _HomeScreenState extends State<HomeScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final c = AppColors.of(context);
     final filtered = _filtered;
-    final attention = filtered.expand(getAttentionItems).toList();
+    final attention = filtered.expand((v) => getAttentionItems(v).map((item) => _AttentionRow(item, v.id, v.name))).toList();
 
-    return Column(
-      children: [
-        Padding(
-          padding: const EdgeInsets.fromLTRB(AppSpace.side, 6, AppSpace.side, 8),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  AppText.date(formatHeaderDate(), color: AppColors.muted),
-                  PlusButton(onPressed: widget.onAddVehicle),
-                ],
-              ),
-              Padding(
-                padding: const EdgeInsets.only(top: 10),
-                child: AppText.title('GARAGE', color: AppColors.ink),
-              ),
-              Padding(
-                padding: const EdgeInsets.only(top: 18),
-                child: VehicleSearchField(value: _query, onChanged: (v) => setState(() => _query = v)),
-              ),
-            ],
+    return Container(
+      color: c.bg,
+      child: Column(
+        children: [
+          ScreenHeader(title: 'Garage', onRightPress: widget.onAddVehicle, rightIcon: Icons.add),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: AppSpace.side),
+            child: AppSearchBar(value: _query, onChanged: (v) => setState(() => _query = v), placeholder: 'Search vehicles'),
           ),
-        ),
-        Expanded(
-          child: ListView(
-            padding: const EdgeInsets.fromLTRB(AppSpace.side, 18, AppSpace.side, 28),
-            keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
-            children: [
-              for (var i = 0; i < filtered.length; i++) ...[
-                _VehicleCard(vehicle: filtered[i], onTap: () => widget.onOpenVehicle(filtered[i].id)),
-                if (i < filtered.length - 1) const SizedBox(height: 12),
-              ],
-              if (filtered.isEmpty)
-                Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 8),
-                  child: Text(
-                    widget.vehicles.isEmpty ? 'No vehicles yet.' : 'No matches.',
-                    style: const TextStyle(color: AppColors.muted, fontSize: 14),
+          Expanded(
+            child: ListView(
+              padding: const EdgeInsets.fromLTRB(AppSpace.side, 20, AppSpace.side, 40),
+              keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
+              children: [
+                for (final v in filtered) _VehicleCard(vehicle: v, onTap: () => widget.onOpenVehicle(v.id)),
+                if (filtered.isEmpty)
+                  Padding(
+                    padding: const EdgeInsets.symmetric(vertical: AppSpace.rowY),
+                    child: Text(
+                      widget.vehicles.isEmpty ? 'No vehicles yet — tap + to add one.' : 'No matches.',
+                      style: AppTypography.small.copyWith(color: c.muted),
+                    ),
                   ),
-                ),
-              if (attention.isNotEmpty) ...[
-                const SizedBox(height: 32),
-                Row(
-                  children: [
-                    AppText.label('Needs attention', color: AppColors.muted),
-                    const SizedBox(width: 8),
-                    Expanded(child: Container(height: AppSpace.hairline, color: AppColors.ink.withValues(alpha: 0.85))),
-                  ],
-                ),
-                AppCard(
-                  margin: const EdgeInsets.only(top: 14),
-                  children: [
-                    for (var i = 0; i < attention.length; i++)
-                      InkWell(
-                        onTap: () => widget.onOpenCategory(attention[i].vehicleId, attention[i].categoryId),
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 16),
-                          decoration: BoxDecoration(
-                            border: i < attention.length - 1
-                                ? const Border(bottom: BorderSide(color: AppColors.hairline, width: AppSpace.hairline))
-                                : null,
-                          ),
-                          child: Container(
-                            constraints: const BoxConstraints(minHeight: 52),
-                            padding: const EdgeInsets.symmetric(vertical: AppSpace.rowY),
-                            child: Row(
-                              children: [
-                                StatusDot(level: attention[i].level),
-                                const SizedBox(width: 12),
-                                Expanded(child: AppText.row(attention[i].name, color: AppColors.ink)),
-                                AppText.small(attention[i].label, color: AppColors.muted, letterSpacing: 0.6, upper: true),
-                              ],
-                            ),
-                          ),
+                if (attention.isNotEmpty) ...[
+                  SizedBox(height: AppSpace.block),
+                  const SectionHeader('Needs attention'),
+                  AppCard(
+                    margin: const EdgeInsets.only(top: 14),
+                    children: [
+                      for (var i = 0; i < attention.length; i++)
+                        CardRow(
+                          onPress: () => widget.onOpenCategory(attention[i].vehicleId, attention[i].item.id),
+                          dot: DueLevel.overdue,
+                          left: filtered.length > 1 ? '${attention[i].vehicleName} · ${attention[i].item.name}' : attention[i].item.name,
+                          right: attention[i].item.label,
+                          divider: i < attention.length - 1,
                         ),
-                      ),
-                  ],
-                ),
+                    ],
+                  ),
+                ],
               ],
-            ],
+            ),
           ),
-        ),
-      ],
+        ],
+      ),
     );
   }
 }
@@ -133,102 +102,79 @@ class _VehicleCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final meta = typeMeta[vehicle.type];
-    final statuses = vehicle.categories.map((c) => getStatus(vehicle, c)).whereType<CategoryStatus>().toList();
-    final overdue = statuses.where((s) => s.level == DueLevel.overdue).length;
-    final soon = statuses.where((s) => s.level == DueLevel.soon).length;
+    final c = AppColors.of(context);
+    final counts = countAttention(vehicle);
+    final label = typeMeta[vehicle.type]?.label ?? vehicle.type;
 
-    return AppCard(
-      onTap: onTap,
-      children: [
-        Container(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-          decoration: const BoxDecoration(
-            border: Border(bottom: BorderSide(color: AppColors.hairline, width: AppSpace.hairline)),
-          ),
-          child: Row(
-            children: [
-              Container(
-                width: 40,
-                height: 40,
-                decoration: BoxDecoration(color: AppColors.iconBg, borderRadius: BorderRadius.circular(10)),
-                alignment: Alignment.center,
-                child: Icon(meta?.icon ?? Icons.directions_car, size: 20, color: AppColors.iconFg),
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(AppSpace.radius),
+        child: AppCard(
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(AppSpace.cardPad, 16, AppSpace.cardPad, 14),
+              child: Row(
+                children: [
+                  TypeIcon(type: vehicle.type, photo: vehicle.photos.isNotEmpty ? vehicle.photos.first : null),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        AppText.title(vehicle.name, color: c.ink),
+                        Padding(
+                          padding: const EdgeInsets.only(top: 2),
+                          child: AppText.label(vehicle.model.isNotEmpty ? '${vehicle.model}  ·  $label' : label, color: c.muted),
+                        ),
+                      ],
+                    ),
+                  ),
+                  Icon(Icons.chevron_right, size: 16, color: c.faint),
+                ],
               ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    AppText.name(vehicle.name, color: AppColors.ink),
+            ),
+            Container(height: AppSpace.hairline, color: c.hairline, margin: const EdgeInsets.symmetric(horizontal: AppSpace.cardPad)),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(AppSpace.cardPad, 14, AppSpace.cardPad, 16),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.end,
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Padding(padding: const EdgeInsets.only(bottom: 4), child: AppText.label('Odometer', color: c.muted)),
+                      Row(
+                        crossAxisAlignment: CrossAxisAlignment.baseline,
+                        textBaseline: TextBaseline.alphabetic,
+                        children: [
+                          AppText.odometer(formatOdo(vehicle.odometer), color: c.ink),
+                          const SizedBox(width: 6),
+                          AppText.body('km', color: c.muted),
+                        ],
+                      ),
+                    ],
+                  ),
+                  if (counts.overdue > 0 || counts.soon > 0)
                     Padding(
-                      padding: const EdgeInsets.only(top: 3),
-                      child: AppText.meta(
-                        vehicle.model.isNotEmpty ? '${vehicle.model}  ·  ${meta?.label ?? vehicle.type}' : (meta?.label ?? vehicle.type),
-                        color: AppColors.muted,
-                        letterSpacing: 0.6,
+                      padding: const EdgeInsets.only(bottom: 6),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.end,
+                        children: [
+                          if (counts.overdue > 0) AppText.meta('·  ${counts.overdue} overdue', color: c.accent),
+                          if (counts.overdue > 0 && counts.soon > 0) const SizedBox(height: 6),
+                          if (counts.soon > 0) AppText.meta('·  ${counts.soon} due soon', color: c.soon),
+                        ],
                       ),
                     ),
-                  ],
-                ),
+                ],
               ),
-              const Icon(Icons.chevron_right, size: 18, color: AppColors.muted),
-            ],
-          ),
+            ),
+          ],
         ),
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    AppText.label('Odometer', color: AppColors.muted),
-                    Padding(
-                      padding: const EdgeInsets.only(top: 4),
-                      child: AppText.odometer('${formatKm(vehicle.odometer)} km', color: AppColors.ink),
-                    ),
-                  ],
-                ),
-              ),
-              Padding(
-                padding: const EdgeInsets.only(top: 6),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.end,
-                  children: [
-                    if (overdue > 0) _StatusLine(color: AppColors.accent, text: '$overdue overdue'),
-                    if (overdue > 0 && soon > 0) const SizedBox(height: 8),
-                    if (soon > 0) _StatusLine(color: AppColors.soon, text: '$soon due soon'),
-                  ],
-                ),
-              ),
-            ],
-          ),
-        ),
-      ],
-    );
-  }
-}
-
-class _StatusLine extends StatelessWidget {
-  final Color color;
-  final String text;
-  const _StatusLine({required this.color, required this.text});
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Container(width: 7, height: 7, decoration: BoxDecoration(shape: BoxShape.circle, color: color)),
-        const SizedBox(width: 8),
-        Text(
-          text.toUpperCase(),
-          style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, letterSpacing: 1.1, color: color),
-        ),
-      ],
+      ),
     );
   }
 }

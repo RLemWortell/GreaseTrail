@@ -1,48 +1,21 @@
 import 'package:flutter/material.dart';
 
 import '../theme.dart';
-import 'ui.dart';
 
-enum AppTab { garage, log, setup }
-
-class TopBar extends StatelessWidget {
-  final String? title;
-  final VoidCallback? onBack;
-  final Widget? right;
-
-  const TopBar({super.key, this.title, this.onBack, this.right});
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.only(top: 8, bottom: 14),
-      constraints: const BoxConstraints(minHeight: 48),
-      child: Row(
-        children: [
-          SizedBox(width: 36, child: onBack != null ? TopBarIconButton(icon: Icons.chevron_left, onPressed: onBack!) : null),
-          Expanded(
-            child: title != null
-                ? Center(child: AppText.name(title!, color: AppColors.ink, maxLines: 1))
-                : const SizedBox.shrink(),
-          ),
-          SizedBox(width: 36, child: Align(alignment: Alignment.centerRight, child: right)),
-        ],
-      ),
-    );
-  }
-}
+enum AppTab { home, log, setup }
 
 class _TabItem {
   final AppTab key;
   final String label;
   final IconData icon;
-  const _TabItem(this.key, this.label, this.icon);
+  final IconData iconOn;
+  const _TabItem(this.key, this.label, this.icon, this.iconOn);
 }
 
 const _tabItems = [
-  _TabItem(AppTab.garage, 'GARAGE', Icons.home_outlined),
-  _TabItem(AppTab.log, 'LOG', Icons.article_outlined),
-  _TabItem(AppTab.setup, 'SETUP', Icons.settings_outlined),
+  _TabItem(AppTab.home, 'Garage', Icons.home_outlined, Icons.home),
+  _TabItem(AppTab.log, 'Log', Icons.description_outlined, Icons.description),
+  _TabItem(AppTab.setup, 'Setup', Icons.settings_outlined, Icons.settings),
 ];
 
 class AppTabBar extends StatelessWidget {
@@ -53,36 +26,24 @@ class AppTabBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final c = AppColors.of(context);
+    final bottomInset = MediaQuery.of(context).padding.bottom;
     return Container(
-      padding: const EdgeInsets.only(top: 10, bottom: 4),
-      decoration: const BoxDecoration(
-        color: AppColors.bg,
-        border: Border(top: BorderSide(color: AppColors.hairline, width: AppSpace.hairline)),
-      ),
+      padding: EdgeInsets.only(top: 10, bottom: bottomInset > 10 ? bottomInset : 10),
+      color: c.surface,
       child: Row(
         children: [
           for (final item in _tabItems)
             Expanded(
               child: InkWell(
                 onTap: () => onChanged(item.key),
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 4),
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(item.icon, size: 22, color: tab == item.key ? AppColors.accent : AppColors.tabOff),
-                      const SizedBox(height: 4),
-                      Text(
-                        item.label,
-                        style: TextStyle(
-                          fontSize: 10,
-                          fontWeight: FontWeight.w600,
-                          letterSpacing: 1.2,
-                          color: tab == item.key ? AppColors.accent : AppColors.tabOff,
-                        ),
-                      ),
-                    ],
-                  ),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(tab == item.key ? item.iconOn : item.icon, size: 22, color: tab == item.key ? c.accent : c.muted),
+                    const SizedBox(height: 4),
+                    AppText.tab(item.label, color: tab == item.key ? c.accent : c.muted),
+                  ],
                 ),
               ),
             ),

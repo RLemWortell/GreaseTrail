@@ -1,54 +1,113 @@
 import 'package:flutter/material.dart';
 
-/// GreaseTrail — garage layout. Beige ground, white cards, rust alerts.
+/// GreaseTrail — warm shop-ledger look. Cream field, white cards, terracotta for what's due.
 class AppColors {
-  AppColors._();
+  final Color bg;
+  final Color surface;
+  final Color card;
+  final Color ink;
+  final Color muted;
+  final Color faint;
+  final Color hairline;
+  final Color border;
+  final Color accent;
+  final Color soon;
+  final Color alert;
+  final Color iconBg;
+  final Color iconFg;
+  final Color photo;
+  final Color dotOff;
 
-  static const bg = Color(0xFFF5F3EF);
-  static const card = Color(0xFFFFFFFF);
-  static const ink = Color(0xFF1A1A1A);
-  static const muted = Color(0xFFA0A0A0);
-  static const faint = Color(0xFFC4C0BA);
-  static const hairline = Color(0xFFE6E3DE);
-  static const rule = Color(0xFF2C2C2C);
-  static const accent = Color(0xFFA65D46);
-  static const soon = Color(0xFF6B6058);
-  static const iconBg = Color(0xFF1A1A1A);
-  static const iconFg = Color(0xFFFFFFFF);
-  static const tabOff = Color(0xFFB3AEA8);
+  const AppColors({
+    required this.bg,
+    required this.surface,
+    required this.card,
+    required this.ink,
+    required this.muted,
+    required this.faint,
+    required this.hairline,
+    required this.border,
+    required this.accent,
+    required this.soon,
+    required this.alert,
+    required this.iconBg,
+    required this.iconFg,
+    required this.photo,
+    required this.dotOff,
+  });
+
+  static const light = AppColors(
+    bg: Color(0xFFF5F5F0),
+    surface: Color(0xFFE8E6E0),
+    card: Color(0xFFFFFFFF),
+    ink: Color(0xFF1A1A1A),
+    muted: Color(0xFF8A8A84),
+    faint: Color(0xFFB4B4AE),
+    hairline: Color(0xFFE4E2DC),
+    border: Color(0xFFD0CEC8),
+    accent: Color(0xFF9E5E3D),
+    soon: Color(0xFF8A7A70),
+    alert: Color(0xFF9E5E3D),
+    iconBg: Color(0xFF1A1A1A),
+    iconFg: Color(0xFFFFFFFF),
+    photo: Color(0xFFEDEBE6),
+    dotOff: Color(0xFFD6D4CE),
+  );
+
+  static const dark = AppColors(
+    bg: Color(0xFF161614),
+    surface: Color(0xFF1C1C19),
+    card: Color(0xFF242422),
+    ink: Color(0xFFF0EFEA),
+    muted: Color(0xFF8A8A82),
+    faint: Color(0xFF5C5C56),
+    hairline: Color(0xFF33332E),
+    border: Color(0xFF3A3A35),
+    accent: Color(0xFFC17A56),
+    soon: Color(0xFFA09086),
+    alert: Color(0xFFC17A56),
+    iconBg: Color(0xFF1A1A1A),
+    iconFg: Color(0xFFFFFFFF),
+    photo: Color(0xFF2A2A26),
+    dotOff: Color(0xFF4A4A44),
+  );
+
+  static AppColors of(BuildContext context) =>
+      Theme.of(context).brightness == Brightness.dark ? dark : light;
 }
 
-enum DueLevel { overdue, soon, ok, none }
+enum DueLevel { overdue, soon, ok }
 
-Color? dotColor(DueLevel level) {
+Decoration dotDecoration(DueLevel level, AppColors c) {
   switch (level) {
     case DueLevel.overdue:
-      return AppColors.accent;
+      return BoxDecoration(shape: BoxShape.circle, color: c.accent);
     case DueLevel.soon:
-      return AppColors.soon;
+      return BoxDecoration(shape: BoxShape.circle, color: c.soon);
     case DueLevel.ok:
-    case DueLevel.none:
-      return null;
+      return BoxDecoration(shape: BoxShape.circle, border: Border.all(color: c.dotOff));
   }
 }
 
 class AppTypography {
   AppTypography._();
 
+  static const display = TextStyle(fontSize: 34, fontWeight: FontWeight.w700, letterSpacing: 0.4);
   static const odometer = TextStyle(
-    fontSize: 36,
+    fontSize: 40,
     fontWeight: FontWeight.w300,
-    letterSpacing: -1.6,
+    letterSpacing: -1.4,
     fontFeatures: [FontFeature.tabularFigures()],
   );
-  static const title = TextStyle(fontSize: 34, fontWeight: FontWeight.w700, letterSpacing: -0.6);
-  static const name = TextStyle(fontSize: 15, fontWeight: FontWeight.w700, letterSpacing: 0.4);
+  static const title = TextStyle(fontSize: 16, fontWeight: FontWeight.w700, letterSpacing: 0.3);
+  static const category = TextStyle(fontSize: 16, fontWeight: FontWeight.w600);
   static const row = TextStyle(fontSize: 16, fontWeight: FontWeight.w400);
   static const body = TextStyle(fontSize: 15, fontWeight: FontWeight.w400);
-  static const meta = TextStyle(fontSize: 12, fontWeight: FontWeight.w400, letterSpacing: 0.4);
-  static const small = TextStyle(fontSize: 12, fontWeight: FontWeight.w400);
+  static const meta = TextStyle(fontSize: 11, fontWeight: FontWeight.w500, letterSpacing: 0.9);
+  static const small = TextStyle(fontSize: 13, fontWeight: FontWeight.w400);
   static const label = TextStyle(fontSize: 11, fontWeight: FontWeight.w500, letterSpacing: 1.4);
-  static const date = TextStyle(fontSize: 11, fontWeight: FontWeight.w500, letterSpacing: 1.6);
+  static const date = TextStyle(fontSize: 11, fontWeight: FontWeight.w500, letterSpacing: 1.1);
+  static const tab = TextStyle(fontSize: 10, fontWeight: FontWeight.w600, letterSpacing: 0.9);
 }
 
 /// Text helpers that apply the uppercase transform baked into some styles above
@@ -56,48 +115,51 @@ class AppTypography {
 class AppText {
   AppText._();
 
+  static Text display(String text, {Color? color}) =>
+      Text(text.toUpperCase(), style: AppTypography.display.copyWith(color: color));
+
   static Text odometer(String text, {Color? color}) =>
       Text(text, style: AppTypography.odometer.copyWith(color: color));
 
-  static Text title(String text, {Color? color}) => Text(text, style: AppTypography.title.copyWith(color: color));
-
-  static Text name(String text, {Color? color, int? maxLines}) => Text(
+  static Text title(String text, {Color? color, int? maxLines}) => Text(
         text.toUpperCase(),
-        style: AppTypography.name.copyWith(color: color),
+        style: AppTypography.title.copyWith(color: color),
         maxLines: maxLines,
         overflow: maxLines != null ? TextOverflow.ellipsis : null,
       );
 
-  static Text row(String text, {Color? color, TextAlign? textAlign}) =>
-      Text(text, style: AppTypography.row.copyWith(color: color), textAlign: textAlign);
+  static Text category(String text, {Color? color}) => Text(text, style: AppTypography.category.copyWith(color: color));
+
+  static Text row(String text, {Color? color}) => Text(text, style: AppTypography.row.copyWith(color: color));
 
   static Text body(String text, {Color? color, FontWeight? fontWeight}) =>
       Text(text, style: AppTypography.body.copyWith(color: color, fontWeight: fontWeight));
 
-  static Text meta(String text, {Color? color, double? letterSpacing}) => Text(
+  static Text meta(String text, {Color? color}) =>
+      Text(text.toUpperCase(), style: AppTypography.meta.copyWith(color: color));
+
+  static Text small(String text, {Color? color}) => Text(text, style: AppTypography.small.copyWith(color: color));
+
+  static Text label(String text, {Color? color, double? letterSpacing}) => Text(
         text.toUpperCase(),
-        style: AppTypography.meta.copyWith(color: color, letterSpacing: letterSpacing),
+        style: AppTypography.label.copyWith(color: color, letterSpacing: letterSpacing),
       );
-
-  static Text small(String text, {Color? color, double? letterSpacing, bool upper = false}) => Text(
-        upper ? text.toUpperCase() : text,
-        style: AppTypography.small.copyWith(color: color, letterSpacing: letterSpacing),
-      );
-
-  static Text label(String text, {Color? color}) =>
-      Text(text.toUpperCase(), style: AppTypography.label.copyWith(color: color));
 
   static Text date(String text, {Color? color}) =>
       Text(text.toUpperCase(), style: AppTypography.date.copyWith(color: color));
+
+  static Text tab(String text, {Color? color}) =>
+      Text(text.toUpperCase(), style: AppTypography.tab.copyWith(color: color));
 }
 
 class AppSpace {
   AppSpace._();
 
-  static const side = 22.0;
-  static const rowY = 16.0;
+  static const side = 20.0;
+  static const rowY = 14.0;
   static const fieldY = 14.0;
   static const block = 28.0;
-  static const hairline = 1.0;
+  static const cardPad = 16.0;
   static const radius = 16.0;
+  static const hairline = 1.0;
 }

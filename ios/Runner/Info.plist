@@ -26,6 +26,10 @@
 	<string>$(FLUTTER_BUILD_NUMBER)</string>
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
+	<key>NSCameraUsageDescription</key>
+	<string>GreaseTrail uses the camera to photograph work on your vehicles.</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>GreaseTrail uses photos for your vehicles and service log.</string>
 	<key>UIApplicationSceneManifest</key>
 	<dict>
 		<key>UIApplicationSupportsMultipleScenes</key>

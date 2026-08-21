@@ -1,115 +1,381 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 
+import '../format.dart';
 import '../theme.dart';
 
-class AppScreen extends StatelessWidget {
-  final Widget child;
-  final EdgeInsetsGeometry? padding;
-
-  const AppScreen({super.key, required this.child, this.padding});
+class Label extends StatelessWidget {
+  final String text;
+  final EdgeInsetsGeometry? margin;
+  const Label(this.text, {super.key, this.margin});
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      color: AppColors.bg,
-      padding: padding ?? const EdgeInsets.symmetric(horizontal: AppSpace.side),
-      child: child,
-    );
+    final c = AppColors.of(context);
+    final child = AppText.label(text, color: c.muted);
+    return margin != null ? Padding(padding: margin!, child: child) : child;
   }
 }
 
 class AppCard extends StatelessWidget {
   final List<Widget> children;
+  final EdgeInsetsGeometry? padding;
   final EdgeInsetsGeometry? margin;
-  final VoidCallback? onTap;
 
-  const AppCard({super.key, required this.children, this.margin, this.onTap});
+  const AppCard({super.key, this.children = const [], this.padding, this.margin});
 
   @override
   Widget build(BuildContext context) {
-    final content = Material(
-      color: AppColors.card,
-      borderRadius: BorderRadius.circular(AppSpace.radius),
+    final c = AppColors.of(context);
+    final content = Container(
+      padding: padding,
       clipBehavior: Clip.antiAlias,
-      child: onTap != null
-          ? InkWell(onTap: onTap, child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: children))
-          : Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: children),
+      decoration: BoxDecoration(color: c.card, borderRadius: BorderRadius.circular(AppSpace.radius)),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: children),
     );
     return margin != null ? Padding(padding: margin!, child: content) : content;
   }
 }
 
-class StatusDot extends StatelessWidget {
-  final DueLevel level;
-  const StatusDot({super.key, this.level = DueLevel.none});
+class AppDivider extends StatelessWidget {
+  final bool inset;
+  const AppDivider({super.key, this.inset = true});
 
   @override
   Widget build(BuildContext context) {
-    final color = dotColor(level);
+    final c = AppColors.of(context);
     return Container(
-      width: 7,
-      height: 7,
-      decoration: BoxDecoration(
-        shape: BoxShape.circle,
-        color: color,
-        border: level == DueLevel.ok ? Border.all(color: AppColors.faint, width: 1) : null,
-      ),
+      height: AppSpace.hairline,
+      margin: EdgeInsets.symmetric(horizontal: inset ? AppSpace.cardPad : 0),
+      color: c.hairline,
     );
   }
 }
 
-class TopBarIconButton extends StatelessWidget {
+class SectionHeader extends StatelessWidget {
+  final String text;
+  const SectionHeader(this.text, {super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    final c = AppColors.of(context);
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Padding(padding: const EdgeInsets.only(bottom: 8), child: AppText.label(text, color: c.muted)),
+        Container(height: AppSpace.hairline, color: c.hairline),
+      ],
+    );
+  }
+}
+
+class SquareButton extends StatelessWidget {
+  final VoidCallback onPressed;
   final IconData icon;
-  final VoidCallback onPressed;
-  final Color color;
-  final double size;
-
-  const TopBarIconButton({super.key, required this.icon, required this.onPressed, this.color = AppColors.ink, this.size = 20});
+  const SquareButton({super.key, required this.onPressed, this.icon = Icons.add});
 
   @override
   Widget build(BuildContext context) {
-    return InkResponse(
-      onTap: onPressed,
-      radius: 24,
-      child: Padding(
-        padding: const EdgeInsets.all(10),
-        child: Icon(icon, size: size, color: color),
-      ),
-    );
-  }
-}
-
-class PlusButton extends StatelessWidget {
-  final VoidCallback onPressed;
-  const PlusButton({super.key, required this.onPressed});
-
-  @override
-  Widget build(BuildContext context) {
+    final c = AppColors.of(context);
     return InkWell(
       onTap: onPressed,
-      borderRadius: BorderRadius.circular(10),
+      borderRadius: BorderRadius.circular(8),
       child: Container(
         width: 36,
         height: 36,
         alignment: Alignment.center,
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(10),
-          border: Border.all(color: AppColors.ink),
-        ),
-        child: const Icon(Icons.add, size: 18, color: AppColors.ink),
+        decoration: BoxDecoration(borderRadius: BorderRadius.circular(8), border: Border.all(color: c.border)),
+        child: Icon(icon, size: 20, color: c.ink),
       ),
     );
   }
 }
 
-/// A labelled, right-aligned text field with a hairline underline — mirrors the
-/// `Field` component from the original app (label left, value+unit right).
+class ScreenHeader extends StatelessWidget {
+  final String title;
+  final VoidCallback? onBack;
+  final VoidCallback? onRightPress;
+  final IconData? rightIcon;
+  final String? rightLabel;
+  final String? subtitle;
+
+  const ScreenHeader({
+    super.key,
+    required this.title,
+    this.onBack,
+    this.onRightPress,
+    this.rightIcon = Icons.add,
+    this.rightLabel,
+    this.subtitle,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final c = AppColors.of(context);
+
+    Widget right;
+    if (onRightPress != null && rightIcon != null) {
+      right = SquareButton(icon: rightIcon!, onPressed: onRightPress!);
+    } else if (onRightPress != null && rightLabel != null) {
+      right = GestureDetector(onTap: onRightPress, child: AppText.label(rightLabel!, color: c.ink));
+    } else {
+      right = const SizedBox(width: 36);
+    }
+
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(AppSpace.side, 4, AppSpace.side, 8),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          ConstrainedBox(
+            constraints: const BoxConstraints(minHeight: 36),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                if (onBack != null)
+                  InkResponse(onTap: onBack, radius: 22, child: Icon(Icons.chevron_left, size: 24, color: c.ink))
+                else
+                  AppText.date(formatDateHeader(), color: c.muted),
+                right,
+              ],
+            ),
+          ),
+          Padding(padding: const EdgeInsets.only(top: 6), child: AppText.display(title, color: c.ink)),
+          if (subtitle != null) Padding(padding: const EdgeInsets.only(top: 4), child: AppText.label(subtitle!, color: c.muted)),
+        ],
+      ),
+    );
+  }
+}
+
+class TopBar extends StatelessWidget {
+  final String title;
+  final VoidCallback? onBack;
+  final String? rightLabel;
+  final VoidCallback? onRightPress;
+  final String? subtitle;
+
+  const TopBar({super.key, required this.title, this.onBack, this.rightLabel, this.onRightPress, this.subtitle});
+
+  @override
+  Widget build(BuildContext context) => ScreenHeader(
+        title: title,
+        onBack: onBack,
+        onRightPress: onRightPress,
+        rightIcon: null,
+        rightLabel: rightLabel,
+        subtitle: subtitle,
+      );
+}
+
+class AppSearchBar extends StatefulWidget {
+  final String value;
+  final ValueChanged<String> onChanged;
+  final String placeholder;
+
+  const AppSearchBar({super.key, required this.value, required this.onChanged, this.placeholder = 'Search'});
+
+  @override
+  State<AppSearchBar> createState() => _AppSearchBarState();
+}
+
+class _AppSearchBarState extends State<AppSearchBar> {
+  late final TextEditingController _controller;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = TextEditingController(text: widget.value);
+  }
+
+  @override
+  void didUpdateWidget(AppSearchBar oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.value != _controller.text) _controller.text = widget.value;
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final c = AppColors.of(context);
+    return Column(
+      children: [
+        Padding(
+          padding: const EdgeInsets.symmetric(vertical: 12),
+          child: Row(
+            children: [
+              Icon(Icons.search, size: 15, color: c.faint),
+              const SizedBox(width: 8),
+              Expanded(
+                child: TextField(
+                  controller: _controller,
+                  onChanged: widget.onChanged,
+                  style: AppTypography.body.copyWith(color: c.ink),
+                  decoration: InputDecoration(
+                    isDense: true,
+                    contentPadding: EdgeInsets.zero,
+                    border: InputBorder.none,
+                    hintText: widget.placeholder,
+                    hintStyle: AppTypography.body.copyWith(color: c.faint),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+        Container(height: AppSpace.hairline, color: c.hairline),
+      ],
+    );
+  }
+}
+
+class TypeIcon extends StatelessWidget {
+  final String type;
+  final double size;
+  final String? photo;
+
+  const TypeIcon({super.key, required this.type, this.size = 36, this.photo});
+
+  static const _icons = {
+    'motorcycle': Icons.motorcycle,
+    'car': Icons.directions_car,
+    'bicycle': Icons.pedal_bike,
+    'scooter': Icons.moped,
+  };
+
+  @override
+  Widget build(BuildContext context) {
+    final c = AppColors.of(context);
+    if (photo != null) {
+      return ClipRRect(
+        borderRadius: BorderRadius.circular(8),
+        child: Container(
+          width: size,
+          height: size,
+          color: c.photo,
+          child: Image.file(File(photo!), width: size, height: size, fit: BoxFit.cover),
+        ),
+      );
+    }
+    return Container(
+      width: size,
+      height: size,
+      decoration: BoxDecoration(color: c.iconBg, borderRadius: BorderRadius.circular(8)),
+      alignment: Alignment.center,
+      child: Icon(_icons[type] ?? Icons.directions_car, size: size * 0.55, color: c.iconFg),
+    );
+  }
+}
+
+/// A tappable card row: optional due-status dot, flexible left/right content
+/// (either a String, rendered in the row/meta style, or a widget), optional
+/// chevron, and a divider below unless this is the last row in the card.
+class CardRow extends StatelessWidget {
+  final Object left;
+  final Object? right;
+  final DueLevel? dot;
+  final VoidCallback? onPress;
+  final bool divider;
+  final bool chevron;
+
+  const CardRow({
+    super.key,
+    required this.left,
+    this.right,
+    this.dot,
+    this.onPress,
+    this.divider = true,
+    this.chevron = false,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final c = AppColors.of(context);
+    final leftWidget = left is String ? AppText.row(left as String, color: c.ink) : left as Widget;
+    final rightWidget = right == null ? null : (right is String ? AppText.meta(right as String, color: c.muted) : right as Widget);
+
+    final content = Container(
+      constraints: const BoxConstraints(minHeight: 48),
+      padding: const EdgeInsets.symmetric(horizontal: AppSpace.cardPad, vertical: AppSpace.rowY),
+      child: Row(
+        children: [
+          if (dot != null) ...[
+            Container(width: 7, height: 7, decoration: dotDecoration(dot!, c)),
+            const SizedBox(width: 12),
+          ],
+          Expanded(child: leftWidget),
+          if (rightWidget != null) ...[const SizedBox(width: 12), rightWidget],
+          if (chevron) ...[const SizedBox(width: 8), Icon(Icons.chevron_right, size: 16, color: c.faint)],
+        ],
+      ),
+    );
+
+    return Column(
+      children: [
+        onPress != null ? InkWell(onTap: onPress, child: content) : content,
+        if (divider) const AppDivider(),
+      ],
+    );
+  }
+}
+
+class CheckRow extends StatelessWidget {
+  final String label;
+  final bool checked;
+  final VoidCallback onToggle;
+  final bool last;
+
+  const CheckRow({super.key, required this.label, required this.checked, required this.onToggle, this.last = false});
+
+  @override
+  Widget build(BuildContext context) {
+    final c = AppColors.of(context);
+    return Column(
+      children: [
+        InkWell(
+          onTap: onToggle,
+          child: Container(
+            constraints: const BoxConstraints(minHeight: 48),
+            padding: const EdgeInsets.symmetric(horizontal: AppSpace.cardPad, vertical: AppSpace.rowY),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                AppText.row(label, color: c.ink),
+                Container(
+                  width: 22,
+                  height: 22,
+                  alignment: Alignment.center,
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(6),
+                    border: checked ? null : Border.all(color: c.border),
+                    color: checked ? c.accent : Colors.transparent,
+                  ),
+                  child: checked ? Icon(Icons.check, size: 14, color: c.iconFg) : null,
+                ),
+              ],
+            ),
+          ),
+        ),
+        if (!last) const AppDivider(),
+      ],
+    );
+  }
+}
+
+/// A labelled, right-aligned text field with a hairline divider below unless
+/// [last] is set — mirrors the original `Field` component.
 class AppField extends StatefulWidget {
   final String label;
   final String value;
   final String? unit;
   final String? placeholder;
-  final bool emphasis;
+  final bool last;
   final TextInputType keyboardType;
   final ValueChanged<String>? onChanged;
   final VoidCallback? onBlur;
@@ -120,7 +386,7 @@ class AppField extends StatefulWidget {
     required this.value,
     this.unit,
     this.placeholder,
-    this.emphasis = false,
+    this.last = false,
     this.keyboardType = TextInputType.text,
     this.onChanged,
     this.onBlur,
@@ -161,49 +427,52 @@ class _AppFieldState extends State<AppField> {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(vertical: AppSpace.fieldY),
-      decoration: BoxDecoration(
-        border: Border(bottom: BorderSide(color: widget.emphasis ? AppColors.rule : AppColors.hairline, width: AppSpace.hairline)),
-      ),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.baseline,
-        textBaseline: TextBaseline.alphabetic,
-        children: [
-          AppText.meta(widget.label, color: AppColors.muted),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.end,
-              crossAxisAlignment: CrossAxisAlignment.baseline,
-              textBaseline: TextBaseline.alphabetic,
-              children: [
-                Expanded(
-                  child: TextField(
-                    controller: _controller,
-                    focusNode: _focusNode,
-                    onChanged: widget.onChanged,
-                    keyboardType: widget.keyboardType,
-                    textAlign: TextAlign.right,
-                    style: AppTypography.row.copyWith(color: AppColors.ink),
-                    decoration: InputDecoration(
-                      isDense: true,
-                      contentPadding: EdgeInsets.zero,
-                      border: InputBorder.none,
-                      hintText: widget.placeholder,
-                      hintStyle: AppTypography.row.copyWith(color: AppColors.faint),
+    final c = AppColors.of(context);
+    return Column(
+      children: [
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: AppSpace.cardPad, vertical: AppSpace.fieldY),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.baseline,
+            textBaseline: TextBaseline.alphabetic,
+            children: [
+              AppText.meta(widget.label, color: c.muted),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.end,
+                  crossAxisAlignment: CrossAxisAlignment.baseline,
+                  textBaseline: TextBaseline.alphabetic,
+                  children: [
+                    Expanded(
+                      child: TextField(
+                        controller: _controller,
+                        focusNode: _focusNode,
+                        onChanged: widget.onChanged,
+                        keyboardType: widget.keyboardType,
+                        textAlign: TextAlign.right,
+                        style: AppTypography.row.copyWith(color: c.ink),
+                        decoration: InputDecoration(
+                          isDense: true,
+                          contentPadding: EdgeInsets.zero,
+                          border: InputBorder.none,
+                          hintText: widget.placeholder,
+                          hintStyle: AppTypography.row.copyWith(color: c.faint),
+                        ),
+                      ),
                     ),
-                  ),
+                    if (widget.unit != null) ...[
+                      const SizedBox(width: 5),
+                      AppText.meta(widget.unit!, color: c.muted),
+                    ],
+                  ],
                 ),
-                if (widget.unit != null) ...[
-                  const SizedBox(width: 5),
-                  AppText.meta(widget.unit!, color: AppColors.muted),
-                ],
-              ],
-            ),
+              ),
+            ],
           ),
-        ],
-      ),
+        ),
+        if (!widget.last) const AppDivider(),
+      ],
     );
   }
 }
@@ -218,33 +487,36 @@ class OptionList<T> extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final c = AppColors.of(context);
     return Column(
       children: [
-        for (final o in options)
-          InkWell(
-            onTap: () => onChanged(o),
-            child: Container(
-              padding: const EdgeInsets.symmetric(vertical: 13),
-              constraints: const BoxConstraints(minHeight: 48),
-              decoration: const BoxDecoration(
-                border: Border(bottom: BorderSide(color: AppColors.hairline, width: AppSpace.hairline)),
-              ),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  AppText.row(getLabel(o), color: AppColors.ink),
-                  Container(
-                    width: 8,
-                    height: 8,
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      color: o == value ? AppColors.ink : null,
-                      border: o == value ? null : Border.all(color: AppColors.faint),
-                    ),
+        for (var i = 0; i < options.length; i++)
+          Column(
+            children: [
+              InkWell(
+                onTap: () => onChanged(options[i]),
+                child: Container(
+                  constraints: const BoxConstraints(minHeight: 48),
+                  padding: const EdgeInsets.symmetric(horizontal: AppSpace.cardPad, vertical: 13),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      AppText.row(getLabel(options[i]), color: c.ink),
+                      Container(
+                        width: 8,
+                        height: 8,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          color: options[i] == value ? c.accent : null,
+                          border: options[i] == value ? null : Border.all(color: c.dotOff),
+                        ),
+                      ),
+                    ],
                   ),
-                ],
+                ),
               ),
-            ),
+              if (i < options.length - 1) const AppDivider(),
+            ],
           ),
       ],
     );
@@ -260,78 +532,19 @@ class ActionRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final c = AppColors.of(context);
     return InkWell(
       onTap: onPressed,
-      child: Container(
-        constraints: const BoxConstraints(minHeight: 48),
-        padding: const EdgeInsets.only(top: 15),
-        decoration: const BoxDecoration(
-          border: Border(top: BorderSide(color: AppColors.rule, width: AppSpace.hairline)),
-        ),
-        child: AppText.body(label, color: destructive ? AppColors.accent : AppColors.ink, fontWeight: FontWeight.w500),
-      ),
-    );
-  }
-}
-
-class VehicleSearchField extends StatefulWidget {
-  final String value;
-  final ValueChanged<String> onChanged;
-  final String placeholder;
-
-  const VehicleSearchField({super.key, required this.value, required this.onChanged, this.placeholder = 'Search vehicles.'});
-
-  @override
-  State<VehicleSearchField> createState() => _VehicleSearchFieldState();
-}
-
-class _VehicleSearchFieldState extends State<VehicleSearchField> {
-  late final TextEditingController _controller;
-
-  @override
-  void initState() {
-    super.initState();
-    _controller = TextEditingController(text: widget.value);
-  }
-
-  @override
-  void didUpdateWidget(VehicleSearchField oldWidget) {
-    super.didUpdateWidget(oldWidget);
-    if (widget.value != _controller.text) _controller.text = widget.value;
-  }
-
-  @override
-  void dispose() {
-    _controller.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.only(bottom: 10),
-      decoration: const BoxDecoration(
-        border: Border(bottom: BorderSide(color: AppColors.hairline, width: AppSpace.hairline)),
-      ),
-      child: Row(
-        children: [
-          const Icon(Icons.search, size: 16, color: AppColors.muted),
-          const SizedBox(width: 10),
-          Expanded(
-            child: TextField(
-              controller: _controller,
-              onChanged: widget.onChanged,
-              style: AppTypography.body.copyWith(color: AppColors.ink),
-              decoration: InputDecoration(
-                isDense: true,
-                contentPadding: EdgeInsets.zero,
-                border: InputBorder.none,
-                hintText: widget.placeholder,
-                hintStyle: AppTypography.body.copyWith(color: AppColors.muted),
-              ),
-            ),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 16),
+        child: Text(
+          label.toUpperCase(),
+          style: AppTypography.label.copyWith(
+            color: destructive ? c.alert : c.accent,
+            fontWeight: FontWeight.w600,
+            letterSpacing: 1.6,
           ),
-        ],
+        ),
       ),
     );
   }

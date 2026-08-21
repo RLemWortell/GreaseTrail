@@ -38,6 +38,21 @@ dependencies:
   # Local key-value persistence, used to store the vehicle/log data on-device.
   shared_preferences: ^2.3.2
 
+  # Camera/library photo capture for vehicle and log photos.
+  image_picker: ^1.1.2
+
+  # App documents/temp directory lookup, used for photo storage and export files.
+  path_provider: ^2.1.5
+
+  # Share exported JSON/CSV/PDF files and config files via the system share sheet.
+  share_plus: ^10.1.4
+
+  # File picker used to import a GreaseTrail config JSON file.
+  file_picker: ^8.1.7
+
+  # PDF report generation for vehicle export.
+  pdf: ^3.11.1
+
 dev_dependencies:
   flutter_test:
     sdk: flutter
@@ -48,6 +63,15 @@ dev_dependencies:
   # package. See that file for information about deactivating specific lint
   # rules and activating additional ones.
   flutter_lints: ^6.0.0
+
+  # Generates iOS/Android app icons from assets/icon.png.
+  flutter_launcher_icons: ^0.14.4
+
+flutter_launcher_icons:
+  image_path: "assets/icon.png"
+  ios: true
+  android: false
+  remove_alpha_ios: true
 
 # For information on the generic Dart part of this file, see the
 # following page: https://dart.dev/tools/pub/pubspec
@@ -60,10 +84,8 @@ flutter:
   # the material Icons class.
   uses-material-design: true
 
-  # To add assets to your application, add an assets section, like this:
-  # assets:
-  #   - images/a_dot_burr.jpeg
-  #   - images/a_dot_ham.jpeg
+  assets:
+    - assets/icon.png
 
   # An image asset can refer to one or more resolution-specific "variants", see
   # https://flutter.dev/to/resolution-aware-images
