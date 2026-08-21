@@ -4,6 +4,12 @@ export function field(label, unit, type = "number", options = null) {
   return { id: uid(), label, unit, type, options };
 }
 
+export const FIELD_TYPES = [
+  { key: "number", label: "Number" },
+  { key: "text", label: "Text" },
+  { key: "checkbox", label: "Checkbox" },
+];
+
 // icon: MaterialCommunityIcons glyph name
 export const TYPE_META = {
   motorcycle: { label: "Motorcycle", icon: "motorbike" },
@@ -11,6 +17,87 @@ export const TYPE_META = {
   bicycle: { label: "Bicycle", icon: "bike" },
   scooter: { label: "Scooter / Moped", icon: "moped" },
 };
+
+export const SERVICE_PACKAGES = {
+  motorcycle: [
+    { id: "minor", name: "Minor service", items: ["Oil change", "Chain tension", "Tire pressure"] },
+    {
+      id: "major",
+      name: "Major service",
+      items: ["Oil change", "Chain tension", "Tire pressure", "Brake pads", "Coolant", "Battery", "Scott oiler"],
+    },
+  ],
+  car: [
+    { id: "minor", name: "Minor service", items: ["Oil change", "Tire pressure", "Wiper blades"] },
+    {
+      id: "major",
+      name: "Major service",
+      items: ["Oil change", "Tire pressure", "Tire tread", "Brake pads", "Coolant", "Wiper blades"],
+    },
+  ],
+  bicycle: [
+    { id: "minor", name: "Minor service", items: ["Chain lube", "Tire pressure"] },
+    {
+      id: "major",
+      name: "Major service",
+      items: ["Chain lube", "Chain wear", "Tire pressure", "Brake pads", "Gear cable tension"],
+    },
+  ],
+  scooter: [
+    { id: "minor", name: "Minor service", items: ["Oil change", "Tire pressure"] },
+    {
+      id: "major",
+      name: "Major service",
+      items: ["Oil change", "Tire pressure", "Variator / belt", "Spark plug"],
+    },
+  ],
+};
+
+export function defaultServices(vehicle) {
+  return (SERVICE_PACKAGES[vehicle.type] || []).map((pack) => ({
+    id: pack.id,
+    name: pack.name,
+    categoryIds: pack.items
+      .map((name) => vehicle.categories.find((c) => c.name === name)?.id)
+      .filter(Boolean),
+  }));
+}
+
+export function getServiceRecords(vehicle) {
+  if (Array.isArray(vehicle.services)) return vehicle.services;
+  return defaultServices(vehicle);
+}
+
+export function getServicePackages(vehicle) {
+  return getServiceRecords(vehicle).map((pack) => ({
+    ...pack,
+    categories: (pack.categoryIds || [])
+      .map((id) => vehicle.categories.find((c) => c.id === id))
+      .filter(Boolean),
+  }));
+}
+
+export function upsertService(vehicle, pack) {
+  const current = getServiceRecords(vehicle);
+  const exists = current.some((s) => s.id === pack.id);
+  return {
+    ...vehicle,
+    services: exists ? current.map((s) => (s.id === pack.id ? pack : s)) : [...current, pack],
+  };
+}
+
+export function removeService(vehicle, id) {
+  return {
+    ...vehicle,
+    services: getServiceRecords(vehicle).filter((s) => s.id !== id),
+  };
+}
+
+export function emptyFieldValues(category, checkboxDefault = false) {
+  return Object.fromEntries(
+    (category.fields || []).map((f) => [f.label, f.type === "checkbox" ? checkboxDefault : ""])
+  );
+}
 
 export const TEMPLATES = {
   motorcycle: [
@@ -74,7 +161,12 @@ export const TEMPLATES = {
       intervalMonths: null,
     },
     { name: "Coolant", fields: [field("Topped up", "L")], intervalKm: null, intervalMonths: 24 },
-    { name: "Wiper blades", fields: [], intervalKm: null, intervalMonths: 12 },
+    {
+      name: "Wiper blades",
+      fields: [field("Front", null, "checkbox"), field("Rear", null, "checkbox")],
+      intervalKm: null,
+      intervalMonths: 12,
+    },
   ],
   bicycle: [
     { name: "Chain lube", fields: [], intervalKm: 300, intervalMonths: null },
@@ -107,102 +199,27 @@ export const TEMPLATES = {
 const daysAgo = (n) => new Date(Date.now() - n * 86400000).toISOString().slice(0, 10);
 
 export function seedVehicle(type, name, model, odo) {
-  return {
+  const vehicle = {
     id: uid(),
     type,
     name,
     model,
     odometer: odo,
+    photos: [],
     categories: TEMPLATES[type].map((c) => ({ ...c, id: uid(), fields: c.fields.map((f) => ({ ...f })) })),
     logs: [],
   };
-}
-
-export function formatKm(n) {
-  return Math.round(Math.abs(n))
-    .toString()
-    .replace(/\B(?=(\d{3})+(?!\d))/g, " ");
-}
-
-export function formatHeaderDate(d = new Date()) {
-  const day = d.getDate();
-  const mon = d.toLocaleString("en-GB", { month: "short" }).toUpperCase();
-  return `${day} ${mon} ${d.getFullYear()}`;
-}
-
-function lastLog(vehicle, category) {
-  return vehicle.logs
-    .filter((l) => l.categoryId === category.id)
-    .sort((a, b) => new Date(b.date) - new Date(a.date))[0];
-}
-
-export function getDueLabel(vehicle, category) {
-  const last = lastLog(vehicle, category);
-  if (!last) return "NEVER";
-
-  let kmRatio = 0;
-  let monthRatio = 0;
-  let kmDelta = null;
-  let dayDelta = null;
-
-  if (category.intervalKm) {
-    kmDelta = vehicle.odometer - last.odometer - category.intervalKm;
-    kmRatio = (vehicle.odometer - last.odometer) / category.intervalKm;
-  }
-  if (category.intervalMonths) {
-    const intervalDays = category.intervalMonths * 30.44;
-    const daysSince = (Date.now() - new Date(last.date).getTime()) / 86400000;
-    dayDelta = daysSince - intervalDays;
-    monthRatio = daysSince / intervalDays;
-  }
-
-  const useDays = monthRatio >= kmRatio && dayDelta != null;
-  if (useDays) return dayDelta >= 0 ? `+${Math.round(dayDelta)} DAYS` : `${Math.round(-dayDelta)} DAYS`;
-  if (kmDelta != null) return kmDelta >= 0 ? `+${formatKm(kmDelta)} KM` : `${formatKm(-kmDelta)} KM`;
-  return "";
-}
-
-export function getAttentionItems(vehicle) {
-  return vehicle.categories
-    .map((c) => {
-      const status = getStatus(vehicle, c);
-      if (!status || status.level === "ok") return null;
-      return {
-        vehicleId: vehicle.id,
-        vehicleName: vehicle.name,
-        categoryId: c.id,
-        name: c.name,
-        level: status.level,
-        label: getDueLabel(vehicle, c),
-        ratio: status.ratio,
-        never: !status.last,
-      };
-    })
-    .filter(Boolean)
-    .sort((a, b) => {
-      const rank = (item) => {
-        if (item.level === "overdue" && !item.never) return 0;
-        if (item.level === "overdue") return 1;
-        return 2;
-      };
-      if (rank(a) !== rank(b)) return rank(a) - rank(b);
-      return b.ratio - a.ratio;
-    });
+  vehicle.services = defaultServices(vehicle);
+  return vehicle;
 }
 
 export function seedDemoData() {
   const v = seedVehicle("motorcycle", "Suzuki V-Strom", "DL650", 34210);
-  const byName = (name) => v.categories.find((c) => c.name === name);
-  const tire = byName("Tire pressure");
-  const oil = byName("Oil change");
-  const chain = byName("Chain tension");
-  const brakes = byName("Brake pads");
-  const coolant = byName("Coolant");
-
+  const cat = (name) => v.categories.find((c) => c.name === name);
   v.logs = [
     {
       id: uid(),
-      categoryId: chain.id,
+      categoryId: cat("Chain tension").id,
       categoryName: "Chain tension",
       date: daysAgo(45),
       odometer: 33800,
@@ -211,7 +228,7 @@ export function seedDemoData() {
     },
     {
       id: uid(),
-      categoryId: oil.id,
+      categoryId: cat("Oil change").id,
       categoryName: "Oil change",
       date: daysAgo(120),
       odometer: 28600,
@@ -220,28 +237,28 @@ export function seedDemoData() {
     },
     {
       id: uid(),
-      categoryId: tire.id,
+      categoryId: cat("Tire pressure").id,
       categoryName: "Tire pressure",
       date: daysAgo(48),
-      odometer: 33980,
+      odometer: 33100,
       values: { Front: "2.3", Rear: "2.5" },
       note: "",
     },
     {
       id: uid(),
-      categoryId: brakes.id,
+      categoryId: cat("Brake pads").id,
       categoryName: "Brake pads",
-      date: daysAgo(80),
+      date: daysAgo(30),
       odometer: 32000,
-      values: { Front: "4.2", Rear: "5.0" },
+      values: { Front: "4.2", Rear: "3.8" },
       note: "",
     },
     {
       id: uid(),
-      categoryId: coolant.id,
+      categoryId: cat("Coolant").id,
       categoryName: "Coolant",
-      date: daysAgo(40),
-      odometer: 34000,
+      date: daysAgo(60),
+      odometer: 32800,
       values: { "Topped up": "0.2" },
       note: "",
     },
@@ -274,3 +291,49 @@ export function getStatus(vehicle, category) {
 }
 
 export const STATUS_LABEL = { overdue: "Overdue", soon: "Due soon", ok: "On track" };
+
+export function attentionLabel(vehicle, category) {
+  const status = getStatus(vehicle, category);
+  if (!status) return null;
+  const last = status.last;
+  if (!last) return "NEVER";
+
+  const kmRatio = category.intervalKm ? (vehicle.odometer - last.odometer) / category.intervalKm : 0;
+  const monthRatio = category.intervalMonths
+    ? (Date.now() - new Date(last.date).getTime()) / (1000 * 60 * 60 * 24 * 30.44) / category.intervalMonths
+    : 0;
+
+  if (kmRatio >= monthRatio && category.intervalKm) {
+    const delta = Math.round(vehicle.odometer - last.odometer - category.intervalKm);
+    return `${Math.abs(delta)} KM`;
+  }
+  if (category.intervalMonths) {
+    const daysSince = (Date.now() - new Date(last.date).getTime()) / 86400000;
+    const delta = Math.round(daysSince - category.intervalMonths * 30.44);
+    return delta >= 0 ? `+${delta} DAYS` : `${Math.abs(delta)} DAYS`;
+  }
+  return STATUS_LABEL[status.level];
+}
+
+export function getAttentionItems(vehicle) {
+  return vehicle.categories
+    .map((cat) => {
+      const status = getStatus(vehicle, cat);
+      if (!status || status.level === "ok") return null;
+      return {
+        id: cat.id,
+        name: cat.name,
+        level: status.level,
+        label: attentionLabel(vehicle, cat),
+      };
+    })
+    .filter(Boolean);
+}
+
+export function countAttention(vehicle) {
+  const items = getAttentionItems(vehicle);
+  return {
+    overdue: items.filter((i) => i.level === "overdue").length,
+    soon: items.filter((i) => i.level === "soon").length,
+  };
+}

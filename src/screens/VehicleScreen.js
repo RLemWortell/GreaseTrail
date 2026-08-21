@@ -1,109 +1,183 @@
 import React, { useState } from "react";
-import { View, Text, ScrollView, TouchableOpacity } from "react-native";
-import { C, TYPE, SPACE } from "../theme";
-import { Card, Field, Dot, IconButton } from "../components/ui";
+import { View, Text, ScrollView, TextInput, Alert } from "react-native";
+import { Card, CardRow, SectionHeader, Label, useC } from "../components/ui";
+import { TYPE, SPACE } from "../theme";
+import { TYPE_META, getStatus, attentionLabel, getServicePackages } from "../data/templates";
+import { formatDate, formatOdo, formatLogLine } from "../format";
+import { exportPdf } from "../data/export";
 import TopBar from "../components/TopBar";
-import { getStatus, getDueLabel, formatKm } from "../data/templates";
+import { PhotoStrip, PhotoThumbs } from "../components/Photos";
 
-export default function VehicleScreen({ vehicle, onBack, onOpenCategory, onManage, onUpdateOdo }) {
+export default function VehicleScreen({
+  vehicle,
+  onBack,
+  onOpenCategory,
+  onManage,
+  onUpdateOdo,
+  onOpenService,
+  onAddService,
+  onUpdate,
+}) {
+  const c = useC();
   const [odoInput, setOdoInput] = useState(String(vehicle.odometer));
+  const [busy, setBusy] = useState(false);
   const allLogs = [...vehicle.logs].sort((a, b) => new Date(b.date) - new Date(a.date));
+  const typeLabel = TYPE_META[vehicle.type]?.label || vehicle.type;
+  const subtitle = vehicle.model ? `${vehicle.model}  ·  ${typeLabel}` : typeLabel;
+  const packages = getServicePackages(vehicle);
 
   return (
-    <View style={{ flex: 1 }}>
-      <View style={{ paddingHorizontal: SPACE.side }}>
-        <TopBar
-          title={vehicle.name}
-          onBack={onBack}
-          right={<IconButton icon="settings" onPress={onManage} />}
-        />
-      </View>
+    <View style={{ flex: 1, backgroundColor: c.bg }}>
+      <TopBar title={vehicle.name} subtitle={subtitle} onBack={onBack} rightLabel="Edit" onRightPress={onManage} />
       <ScrollView
-        contentContainerStyle={{ paddingHorizontal: SPACE.side, paddingBottom: 32 }}
+        contentContainerStyle={{ paddingHorizontal: SPACE.side, paddingTop: 12, paddingBottom: 40 }}
         keyboardShouldPersistTaps="handled"
-        showsVerticalScrollIndicator={false}
       >
-        <Text style={[TYPE.label, { color: C.muted, marginTop: 4 }]}>Odometer</Text>
-        <Field
-          label="Reading"
-          value={odoInput}
-          unit="km"
-          keyboardType="numeric"
-          onChangeText={setOdoInput}
-          onBlur={() => onUpdateOdo(Number(odoInput) || 0)}
-          emphasis
-        />
-
-        <View style={{ flexDirection: "row", alignItems: "center", gap: 12, marginTop: 32, marginBottom: 12 }}>
-          <Text style={[TYPE.label, { color: C.muted }]}>Categories</Text>
-          <View style={{ flex: 1, height: SPACE.hairline, backgroundColor: C.ink, opacity: 0.85 }} />
-        </View>
-
-        <Card>
-          {vehicle.categories.map((c, i) => {
-            const status = getStatus(vehicle, c);
-            const level = status?.level || "none";
-            return (
-              <TouchableOpacity
-                key={c.id}
-                onPress={() => onOpenCategory(c.id)}
-                activeOpacity={0.7}
-                style={{
-                  flexDirection: "row",
-                  alignItems: "center",
-                  gap: 12,
-                  paddingHorizontal: 16,
-                  paddingVertical: SPACE.rowY,
-                  borderBottomWidth: i < vehicle.categories.length - 1 ? SPACE.hairline : 0,
-                  borderBottomColor: C.hairline,
-                  minHeight: 52,
-                }}
-              >
-                <Dot level={level} />
-                <Text style={[TYPE.row, { color: C.ink, flex: 1 }]}>{c.name}</Text>
-                <Text style={[TYPE.small, { color: C.muted, letterSpacing: 0.6, textTransform: "uppercase" }]}>
-                  {status ? getDueLabel(vehicle, c) : ""}
-                </Text>
-              </TouchableOpacity>
-            );
-          })}
+        <Card style={{ paddingHorizontal: SPACE.cardPad, paddingTop: 14, paddingBottom: 16 }}>
+          <Text style={[TYPE.label, { color: c.muted, marginBottom: 4 }]}>Odometer</Text>
+          <View style={{ flexDirection: "row", alignItems: "baseline", gap: 8 }}>
+            <TextInputOdometer
+              value={odoInput}
+              onChangeText={setOdoInput}
+              onBlur={() => onUpdateOdo(Number(odoInput) || 0)}
+              color={c.ink}
+            />
+            <Text style={[TYPE.body, { color: c.muted }]}>km</Text>
+          </View>
         </Card>
 
-        <View style={{ flexDirection: "row", alignItems: "center", gap: 12, marginTop: 32, marginBottom: 12 }}>
-          <Text style={[TYPE.label, { color: C.muted }]}>History</Text>
-          <View style={{ flex: 1, height: SPACE.hairline, backgroundColor: C.ink, opacity: 0.85 }} />
+        <View style={{ marginTop: SPACE.block }}>
+          <Label style={{ marginBottom: 10 }}>Photos</Label>
+          <Card style={{ padding: SPACE.cardPad }}>
+            <PhotoStrip
+              uris={vehicle.photos || []}
+              editable
+              onChange={(photos) => onUpdate({ photos })}
+            />
+          </Card>
         </View>
 
-        {allLogs.length === 0 ? (
-          <Text style={{ color: C.muted, fontSize: 14 }}>Nothing logged yet.</Text>
-        ) : (
+        <View style={{ marginTop: SPACE.block }}>
+          <SectionHeader>Service</SectionHeader>
           <Card>
-            {allLogs.map((l, i) => (
-              <View
-                key={l.id}
-                style={{
-                  paddingHorizontal: 16,
-                  paddingVertical: 14,
-                  borderBottomWidth: i < allLogs.length - 1 ? SPACE.hairline : 0,
-                  borderBottomColor: C.hairline,
-                }}
-              >
-                <View style={{ flexDirection: "row", justifyContent: "space-between" }}>
-                  <Text style={[TYPE.row, { color: C.ink }]}>{l.categoryName}</Text>
-                  <Text style={[TYPE.small, { color: C.muted }]}>{l.date}</Text>
-                </View>
-                <Text style={[TYPE.small, { color: C.muted, marginTop: 4 }]}>
-                  {formatKm(l.odometer)} km
-                  {Object.entries(l.values)
-                    .filter(([, v]) => v)
-                    .map(([k, v]) => `  ·  ${k}: ${v}`)
-                    .join("")}
-                </Text>
-              </View>
+            {packages.map((pack) => (
+              <CardRow
+                key={pack.id}
+                onPress={() => onOpenService(pack.id)}
+                chevron
+                dot="hidden"
+                left={pack.name}
+                right={`${pack.categories.length} items`}
+                divider
+              />
             ))}
+            <CardRow
+              onPress={onAddService}
+              dot="hidden"
+              left={<Text style={[TYPE.meta, { color: c.ink }]}>+ Add service</Text>}
+              divider={false}
+            />
           </Card>
-        )}
+        </View>
+
+        <View style={{ marginTop: SPACE.block }}>
+          <SectionHeader>Categories</SectionHeader>
+          <Card>
+            {vehicle.categories.map((cat, i) => {
+              const status = getStatus(vehicle, cat);
+              const right = status ? attentionLabel(vehicle, cat) : null;
+              return (
+                <CardRow
+                  key={cat.id}
+                  onPress={() => onOpenCategory(cat.id)}
+                  dot={status ? status.level : "hidden"}
+                  left={
+                    <View>
+                      <Text style={[TYPE.row, { color: c.ink }]}>{cat.name}</Text>
+                      <Text style={[TYPE.small, { color: c.muted, marginTop: 2 }]}>
+                        {status?.last
+                          ? `Last  ·  ${formatDate(status.last.date)}  ·  ${formatOdo(status.last.odometer)} km`
+                          : "No entries yet"}
+                      </Text>
+                    </View>
+                  }
+                  right={right}
+                  chevron
+                  divider={i < vehicle.categories.length - 1}
+                />
+              );
+            })}
+          </Card>
+        </View>
+
+        <View style={{ marginTop: SPACE.block }}>
+          <SectionHeader>History</SectionHeader>
+          {allLogs.length === 0 ? (
+            <Text style={[TYPE.small, { color: c.muted, paddingVertical: SPACE.rowY }]}>
+              Nothing logged yet — tap a category to add the first entry.
+            </Text>
+          ) : (
+            <Card>
+              {allLogs.map((l, i) => (
+                <CardRow
+                  key={l.id}
+                  dot="hidden"
+                  left={
+                    <View>
+                      <Text style={[TYPE.row, { color: c.ink }]}>{l.categoryName}</Text>
+                      <Text style={[TYPE.small, { color: c.muted, marginTop: 2 }]}>
+                        {l.service ? `${l.service}  ·  ` : ""}
+                        {formatOdo(l.odometer)} km
+                        {formatLogLine(vehicle, l) ? `  ·  ${formatLogLine(vehicle, l)}` : ""}
+                        {l.note ? `  ·  ${l.note}` : ""}
+                      </Text>
+                      <PhotoThumbs uris={l.photos} />
+                    </View>
+                  }
+                  right={formatDate(l.date)}
+                  divider={i < allLogs.length - 1}
+                />
+              ))}
+            </Card>
+          )}
+        </View>
+
+        <View style={{ marginTop: SPACE.block }}>
+          <SectionHeader>Export</SectionHeader>
+          <Card>
+            <CardRow
+              onPress={async () => {
+                if (busy) return;
+                setBusy(true);
+                try {
+                  await exportPdf([vehicle]);
+                } catch (e) {
+                  Alert.alert("Export failed", e?.message || String(e));
+                } finally {
+                  setBusy(false);
+                }
+              }}
+              chevron
+              dot="hidden"
+              left="PDF report"
+              right={busy ? "…" : undefined}
+              divider={false}
+            />
+          </Card>
+        </View>
       </ScrollView>
     </View>
+  );
+}
+
+function TextInputOdometer({ value, onChangeText, onBlur, color }) {
+  return (
+    <TextInput
+      value={value}
+      onChangeText={onChangeText}
+      onBlur={onBlur}
+      keyboardType="numeric"
+      style={[TYPE.odometer, { color, padding: 0, minWidth: 120 }]}
+    />
   );
 }

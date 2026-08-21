@@ -4,22 +4,46 @@
     "slug": "greasetrail",
     "version": "1.0.0",
     "orientation": "portrait",
-    "userInterfaceStyle": "light",
-    "backgroundColor": "#F5F3EF",
+    "userInterfaceStyle": "automatic",
+    "backgroundColor": "#F5F5F0",
     "icon": "./assets/icon.png",
     "splash": {
-      "backgroundColor": "#F5F3EF",
+      "image": "./assets/splash-icon.png",
+      "backgroundColor": "#F5F5F0",
       "resizeMode": "contain"
     },
-    "assetBundlePatterns": ["**/*"],
+    "plugins": [
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "GreaseTrail uses photos for your vehicles and service log.",
+          "cameraPermission": "GreaseTrail uses the camera to photograph work on your vehicles."
+        }
+      ]
+    ],
+    "assetBundlePatterns": [
+      "**/*"
+    ],
     "ios": {
       "supportsTablet": false,
-      "bundleIdentifier": "com.lemairtech.greasetrail"
+      "bundleIdentifier": "com.lemairtech.greasetrail",
+      "infoPlist": {
+        "ITSAppUsesNonExemptEncryption": false
+      }
     },
     "android": {
       "package": "com.lemairtech.greasetrail",
       "adaptiveIcon": {
-        "backgroundColor": "#F5F3EF"
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#F5F5F0"
+      },
+      "permissions": [
+        "android.permission.RECORD_AUDIO"
+      ]
+    },
+    "extra": {
+      "eas": {
+        "projectId": "212d200e-1eda-43cc-9cf7-4d257c69a6a3"
       }
     }
   }

@@ -1,52 +1,58 @@
 import React, { useMemo } from "react";
-import { View, Text, ScrollView, TouchableOpacity } from "react-native";
-import { C, TYPE, SPACE } from "../theme";
-import { Card } from "../components/ui";
-import { formatKm, formatHeaderDate } from "../data/templates";
+import { View, Text, ScrollView } from "react-native";
+import { ScreenHeader, Card, CardRow, useC } from "../components/ui";
+import { TYPE, SPACE } from "../theme";
+import { formatDate, formatOdo, formatLogLine } from "../format";
+import { PhotoThumbs } from "../components/Photos";
 
 export default function LogScreen({ vehicles, onOpenVehicle }) {
-  const entries = useMemo(() => {
-    const all = vehicles.flatMap((v) =>
-      v.logs.map((l) => ({ ...l, vehicleId: v.id, vehicleName: v.name }))
-    );
-    return all.sort((a, b) => new Date(b.date) - new Date(a.date));
-  }, [vehicles]);
+  const c = useC();
+
+  const entries = useMemo(
+    () =>
+      vehicles
+        .flatMap((v) =>
+          v.logs.map((l) => ({
+            ...l,
+            vehicle: v,
+            vehicleId: v.id,
+            vehicleName: v.name,
+          }))
+        )
+        .sort((a, b) => new Date(b.date) - new Date(a.date)),
+    [vehicles]
+  );
 
   return (
-    <View style={{ flex: 1 }}>
-      <View style={{ paddingHorizontal: SPACE.side, paddingTop: 6, paddingBottom: 8 }}>
-        <Text style={[TYPE.date, { color: C.muted }]}>{formatHeaderDate()}</Text>
-        <Text style={[TYPE.title, { color: C.ink, marginTop: 10 }]}>LOG</Text>
-      </View>
-      <ScrollView
-        style={{ flex: 1 }}
-        contentContainerStyle={{ paddingHorizontal: SPACE.side, paddingTop: 18, paddingBottom: 28 }}
-        showsVerticalScrollIndicator={false}
-      >
+    <View style={{ flex: 1, backgroundColor: c.bg }}>
+      <ScreenHeader title="Log" />
+      <ScrollView contentContainerStyle={{ paddingHorizontal: SPACE.side, paddingTop: 12, paddingBottom: 40 }}>
         {entries.length === 0 ? (
-          <Text style={{ color: C.muted, fontSize: 14 }}>Nothing logged yet.</Text>
+          <Text style={[TYPE.small, { color: c.muted, paddingVertical: SPACE.rowY }]}>
+            Nothing logged yet — open a vehicle and tap a category to add the first entry.
+          </Text>
         ) : (
           <Card>
             {entries.map((l, i) => (
-              <TouchableOpacity
+              <CardRow
                 key={l.id}
                 onPress={() => onOpenVehicle(l.vehicleId)}
-                activeOpacity={0.7}
-                style={{
-                  paddingHorizontal: 16,
-                  paddingVertical: SPACE.rowY,
-                  borderBottomWidth: i < entries.length - 1 ? SPACE.hairline : 0,
-                  borderBottomColor: C.hairline,
-                }}
-              >
-                <View style={{ flexDirection: "row", justifyContent: "space-between", gap: 12 }}>
-                  <Text style={[TYPE.row, { color: C.ink, flex: 1 }]}>{l.categoryName}</Text>
-                  <Text style={[TYPE.small, { color: C.muted }]}>{l.date}</Text>
-                </View>
-                <Text style={[TYPE.small, { color: C.muted, marginTop: 4 }]}>
-                  {l.vehicleName}  ·  {formatKm(l.odometer)} km
-                </Text>
-              </TouchableOpacity>
+                dot="hidden"
+                left={
+                  <View>
+                    <Text style={[TYPE.row, { color: c.ink }]}>{l.categoryName}</Text>
+                    <Text style={[TYPE.small, { color: c.muted, marginTop: 2 }]}>
+                      {l.service ? `${l.service}  ·  ` : ""}
+                      {l.vehicleName}  ·  {formatOdo(l.odometer)} km
+                      {formatLogLine(l.vehicle, l) ? `  ·  ${formatLogLine(l.vehicle, l)}` : ""}
+                      {l.note ? `  ·  ${l.note}` : ""}
+                    </Text>
+                    <PhotoThumbs uris={l.photos} />
+                  </View>
+                }
+                right={formatDate(l.date)}
+                divider={i < entries.length - 1}
+              />
             ))}
           </Card>
         )}

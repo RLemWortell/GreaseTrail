@@ -1,11 +1,13 @@
 import React, { useState, useMemo } from "react";
-import { View, Text, ScrollView, StyleSheet, TouchableOpacity } from "react-native";
-import { Feather, MaterialCommunityIcons } from "@expo/vector-icons";
-import { C, TYPE, SPACE } from "../theme";
-import { Card, SearchField, PlusButton, Dot } from "../components/ui";
-import { TYPE_META, getStatus, getAttentionItems, formatKm, formatHeaderDate } from "../data/templates";
+import { View, Text, ScrollView, TouchableOpacity } from "react-native";
+import { Ionicons } from "@expo/vector-icons";
+import { ScreenHeader, SearchBar, Card, CardRow, SectionHeader, TypeIcon, useC } from "../components/ui";
+import { TYPE, SPACE } from "../theme";
+import { TYPE_META, countAttention, getAttentionItems } from "../data/templates";
+import { formatOdo } from "../format";
 
 export default function HomeScreen({ vehicles, onOpenVehicle, onAddVehicle, onOpenCategory }) {
+  const c = useC();
   const [query, setQuery] = useState("");
 
   const filtered = useMemo(() => {
@@ -16,60 +18,48 @@ export default function HomeScreen({ vehicles, onOpenVehicle, onAddVehicle, onOp
     );
   }, [vehicles, query]);
 
-  const attention = useMemo(() => filtered.flatMap(getAttentionItems), [filtered]);
+  const attention = useMemo(
+    () =>
+      filtered.flatMap((v) =>
+        getAttentionItems(v).map((item) => ({ ...item, vehicleId: v.id, vehicleName: v.name }))
+      ),
+    [filtered]
+  );
 
   return (
-    <View style={{ flex: 1 }}>
-      <View style={styles.header}>
-        <View style={styles.headerRow}>
-          <Text style={[TYPE.date, { color: C.muted }]}>{formatHeaderDate()}</Text>
-          <PlusButton onPress={onAddVehicle} />
-        </View>
-        <Text style={[TYPE.title, { color: C.ink, marginTop: 10 }]}>GARAGE</Text>
-        <View style={{ marginTop: 18 }}>
-          <SearchField value={query} onChangeText={setQuery} />
-        </View>
+    <View style={{ flex: 1, backgroundColor: c.bg }}>
+      <ScreenHeader title="Garage" onRightPress={onAddVehicle} rightIcon="add" />
+      <View style={{ paddingHorizontal: SPACE.side }}>
+        <SearchBar value={query} onChangeText={setQuery} placeholder="Search vehicles" />
       </View>
 
       <ScrollView
-        style={{ flex: 1 }}
-        contentContainerStyle={styles.scroll}
+        contentContainerStyle={{ paddingHorizontal: SPACE.side, paddingTop: 20, paddingBottom: 40 }}
         keyboardShouldPersistTaps="handled"
-        showsVerticalScrollIndicator={false}
       >
-        <View style={{ gap: 12 }}>
-          {filtered.map((v) => (
-            <VehicleCard key={v.id} vehicle={v} onPress={() => onOpenVehicle(v.id)} />
-          ))}
-          {filtered.length === 0 && (
-            <Text style={{ color: C.muted, fontSize: 14, paddingVertical: 8 }}>
-              {vehicles.length === 0 ? "No vehicles yet." : "No matches."}
-            </Text>
-          )}
-        </View>
+        {filtered.map((v) => (
+          <VehicleCard key={v.id} vehicle={v} onPress={() => onOpenVehicle(v.id)} />
+        ))}
+
+        {filtered.length === 0 && (
+          <Text style={[TYPE.small, { color: c.muted, paddingVertical: SPACE.rowY }]}>
+            {vehicles.length === 0 ? "No vehicles yet — tap + to add one." : "No matches."}
+          </Text>
+        )}
 
         {attention.length > 0 && (
-          <View style={{ marginTop: 32 }}>
-            <View style={styles.sectionHead}>
-              <Text style={[TYPE.label, { color: C.muted }]}>Needs attention</Text>
-              <View style={styles.sectionRule} />
-            </View>
-            <Card style={{ marginTop: 14 }}>
+          <View style={{ marginTop: SPACE.block }}>
+            <SectionHeader>Needs attention</SectionHeader>
+            <Card>
               {attention.map((item, i) => (
-                <TouchableOpacity
-                  key={`${item.vehicleId}-${item.categoryId}`}
-                  onPress={() => onOpenCategory(item.vehicleId, item.categoryId)}
-                  activeOpacity={0.7}
-                  style={[styles.attnRow, i < attention.length - 1 && styles.attnRowBorder]}
-                >
-                  <View style={styles.attnInner}>
-                    <Dot level={item.level} />
-                    <Text style={[TYPE.row, { color: C.ink, flex: 1 }]}>{item.name}</Text>
-                    <Text style={[TYPE.small, { color: C.muted, letterSpacing: 0.6, textTransform: "uppercase" }]}>
-                      {item.label}
-                    </Text>
-                  </View>
-                </TouchableOpacity>
+                <CardRow
+                  key={`${item.vehicleId}-${item.id}`}
+                  onPress={() => onOpenCategory(item.vehicleId, item.id)}
+                  dot="overdue"
+                  left={vehicles.length > 1 ? `${item.vehicleName} · ${item.name}` : item.name}
+                  right={item.label}
+                  divider={i < attention.length - 1}
+                />
               ))}
             </Card>
           </View>
@@ -80,130 +70,64 @@ export default function HomeScreen({ vehicles, onOpenVehicle, onAddVehicle, onOp
 }
 
 function VehicleCard({ vehicle, onPress }) {
-  const iconName = TYPE_META[vehicle.type]?.icon || "car";
+  const c = useC();
+  const counts = countAttention(vehicle);
   const typeLabel = TYPE_META[vehicle.type]?.label || vehicle.type;
-  const statuses = vehicle.categories.map((c) => getStatus(vehicle, c)).filter(Boolean);
-  const overdue = statuses.filter((s) => s.level === "overdue").length;
-  const soon = statuses.filter((s) => s.level === "soon").length;
 
   return (
-    <Card onPress={onPress}>
-      <View style={styles.vehicleHead}>
-        <View style={styles.vehicleIcon}>
-          <MaterialCommunityIcons name={iconName} size={20} color={C.iconFg} />
+    <TouchableOpacity onPress={onPress} activeOpacity={0.7} style={{ marginBottom: 12 }}>
+      <Card>
+        <View
+          style={{
+            flexDirection: "row",
+            alignItems: "center",
+            gap: 12,
+            paddingHorizontal: SPACE.cardPad,
+            paddingTop: 16,
+            paddingBottom: 14,
+          }}
+        >
+          <TypeIcon type={vehicle.type} photo={vehicle.photos?.[0]} />
+          <View style={{ flex: 1 }}>
+            <Text style={[TYPE.title, { color: c.ink }]}>{vehicle.name}</Text>
+            <Text style={[TYPE.label, { color: c.muted, marginTop: 2 }]}>
+              {vehicle.model ? `${vehicle.model}  ·  ${typeLabel}` : typeLabel}
+            </Text>
+          </View>
+          <Ionicons name="chevron-forward" size={16} color={c.faint} />
         </View>
-        <View style={{ flex: 1 }}>
-          <Text style={[TYPE.name, { color: C.ink }]}>{vehicle.name}</Text>
-          <Text style={[TYPE.meta, { color: C.muted, marginTop: 3, letterSpacing: 0.6 }]}>
-            {vehicle.model ? `${vehicle.model}  ·  ` : ""}
-            {typeLabel}
-          </Text>
-        </View>
-        <Feather name="chevron-right" size={18} color={C.muted} />
-      </View>
 
-      <View style={styles.vehicleBody}>
-        <View>
-          <Text style={[TYPE.label, { color: C.muted, letterSpacing: 1.2 }]}>Odometer</Text>
-          <Text style={[TYPE.odometer, { color: C.ink, marginTop: 4 }]}>{formatKm(vehicle.odometer)} km</Text>
-        </View>
-        <View style={{ alignItems: "flex-end", gap: 8, paddingTop: 6 }}>
-          {overdue > 0 && (
-            <View style={styles.statusLine}>
-              <View style={[styles.statusDot, { backgroundColor: C.accent }]} />
-              <Text style={[styles.statusText, { color: C.accent }]}>
-                {overdue} overdue
-              </Text>
+        <View style={{ height: 1, backgroundColor: c.hairline, marginHorizontal: SPACE.cardPad }} />
+
+        <View
+          style={{
+            flexDirection: "row",
+            alignItems: "flex-end",
+            justifyContent: "space-between",
+            paddingHorizontal: SPACE.cardPad,
+            paddingTop: 14,
+            paddingBottom: 16,
+          }}
+        >
+          <View>
+            <Text style={[TYPE.label, { color: c.muted, marginBottom: 4 }]}>Odometer</Text>
+            <View style={{ flexDirection: "row", alignItems: "baseline", gap: 6 }}>
+              <Text style={[TYPE.odometer, { color: c.ink }]}>{formatOdo(vehicle.odometer)}</Text>
+              <Text style={[TYPE.body, { color: c.muted }]}>km</Text>
+            </View>
+          </View>
+          {(counts.overdue > 0 || counts.soon > 0) && (
+            <View style={{ paddingBottom: 6, gap: 6, alignItems: "flex-end" }}>
+              {counts.overdue > 0 && (
+                <Text style={[TYPE.meta, { color: c.accent }]}>·  {counts.overdue} overdue</Text>
+              )}
+              {counts.soon > 0 && (
+                <Text style={[TYPE.meta, { color: c.soon }]}>·  {counts.soon} due soon</Text>
+              )}
             </View>
           )}
-          {soon > 0 && (
-            <View style={styles.statusLine}>
-              <View style={[styles.statusDot, { backgroundColor: C.soon }]} />
-              <Text style={[styles.statusText, { color: C.soon }]}>{soon} due soon</Text>
-            </View>
-          )}
         </View>
-      </View>
-    </Card>
+      </Card>
+    </TouchableOpacity>
   );
 }
-
-const styles = StyleSheet.create({
-  header: {
-    paddingHorizontal: SPACE.side,
-    paddingTop: 6,
-    paddingBottom: 8,
-  },
-  headerRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-  },
-  scroll: {
-    paddingHorizontal: SPACE.side,
-    paddingTop: 18,
-    paddingBottom: 28,
-  },
-  vehicleHead: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 12,
-    paddingHorizontal: 16,
-    paddingVertical: 14,
-    borderBottomWidth: SPACE.hairline,
-    borderBottomColor: C.hairline,
-  },
-  vehicleIcon: {
-    width: 40,
-    height: 40,
-    borderRadius: 10,
-    backgroundColor: C.iconBg,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  vehicleBody: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "flex-start",
-    paddingHorizontal: 16,
-    paddingVertical: 16,
-  },
-  statusLine: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 8,
-  },
-  statusDot: {
-    width: 7,
-    height: 7,
-    borderRadius: 3.5,
-  },
-  statusText: {
-    fontSize: 11,
-    fontWeight: "600",
-    letterSpacing: 1.1,
-    textTransform: "uppercase",
-  },
-  sectionHead: {
-    gap: 8,
-  },
-  sectionRule: {
-    height: SPACE.hairline,
-    backgroundColor: C.ink,
-    opacity: 0.85,
-  },
-  attnRow: {
-    paddingHorizontal: 16,
-  },
-  attnRowBorder: {
-    borderBottomWidth: SPACE.hairline,
-    borderBottomColor: C.hairline,
-  },
-  attnInner: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 12,
-    paddingVertical: SPACE.rowY,
-    minHeight: 52,
-  },
-});
