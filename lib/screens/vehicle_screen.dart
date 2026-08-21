@@ -108,7 +108,7 @@ class _VehicleScreenState extends State<VehicleScreen> {
                           child: TextField(
                             controller: _odoController,
                             focusNode: _odoFocus,
-                            keyboardType: TextInputType.number,
+                            keyboardType: TextInputType.numberWithOptions(decimal: true),
                             style: AppTypography.odometer.copyWith(color: c.ink),
                             decoration: const InputDecoration(isDense: true, contentPadding: EdgeInsets.zero, border: InputBorder.none),
                           ),

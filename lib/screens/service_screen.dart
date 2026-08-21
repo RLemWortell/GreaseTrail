@@ -75,7 +75,7 @@ class _ServiceScreenState extends State<ServiceScreen> {
                     label: 'Odometer',
                     value: _odo,
                     unit: 'km',
-                    keyboardType: TextInputType.number,
+                    keyboardType: TextInputType.numberWithOptions(decimal: true),
                     last: true,
                     onChanged: (v) => setState(() => _odo = v),
                   ),
@@ -167,7 +167,7 @@ class _ServiceScreenState extends State<ServiceScreen> {
               unit: f.unit,
               value: (catValues[f.label] as String?) ?? '',
               onChanged: (v) => _setField(cat.id, f.label, v),
-              keyboardType: f.type == 'number' ? TextInputType.number : TextInputType.text,
+              keyboardType: f.type == 'number' ? TextInputType.numberWithOptions(decimal: true) : TextInputType.text,
               placeholder: f.unit != null ? 'e.g. 0.6' : '',
               last: isLastInline,
             ));

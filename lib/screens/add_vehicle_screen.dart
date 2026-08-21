@@ -108,7 +108,7 @@ class _AddVehicleScreenState extends State<AddVehicleScreen> {
                     value: _odo,
                     placeholder: '0',
                     unit: 'km',
-                    keyboardType: TextInputType.number,
+                    keyboardType: TextInputType.numberWithOptions(decimal: true),
                     last: true,
                     onChanged: (v) => _odo = v,
                   ),

@@ -5,6 +5,8 @@ import 'data/config.dart' as config_data;
 import 'models.dart';
 import 'storage.dart';
 import 'theme.dart';
+import 'widgets/screen_transition.dart';
+import 'widgets/splash_screen.dart';
 import 'widgets/top_bar.dart';
 import 'screens/home_screen.dart';
 import 'screens/log_screen.dart';
@@ -92,6 +94,14 @@ class ManageRoute extends AppRoute {
   const ManageRoute({required this.vehicleId, required this.returnTo});
 }
 
+/// Where a route's back action lands, and which tab should be selected if
+/// that destination is the tabs root.
+class _BackTarget {
+  final AppRoute route;
+  final AppTab? tab;
+  const _BackTarget(this.route, {this.tab});
+}
+
 class RootPage extends StatefulWidget {
   const RootPage({super.key});
 
@@ -106,6 +116,7 @@ class _RootPageState extends State<RootPage> {
   bool _hasLoaded = false;
   AppTab _tab = AppTab.home;
   AppRoute _route = const TabsRoute();
+  bool _lastNavWasBack = false;
 
   @override
   void initState() {
@@ -150,14 +161,50 @@ class _RootPageState extends State<RootPage> {
 
   static String _resolveTabReturnTo(String? value) => (value == 'home' || value == 'log' || value == 'setup') ? value! : 'home';
 
-  void _goToTabOrHome(String? returnTo) {
-    setState(() {
-      _tab = switch (returnTo) {
+  static AppTab _tabFor(String? returnTo) => switch (returnTo) {
         'log' => AppTab.log,
         'setup' => AppTab.setup,
         _ => AppTab.home,
       };
-      _route = const TabsRoute();
+
+  /// Pushes forward to a new screen (slides in from the right).
+  void _navigate(AppRoute route) {
+    _lastNavWasBack = false;
+    setState(() => _route = route);
+  }
+
+  /// Where the current route's back action leads, or null if there is none
+  /// (i.e. we're already at the tabs root).
+  _BackTarget? _backTargetFor(AppRoute route) {
+    switch (route) {
+      case TabsRoute():
+        return null;
+      case AddVehicleRoute(returnTo: final returnTo):
+        return _BackTarget(const TabsRoute(), tab: _tabFor(returnTo));
+      case VehicleRoute(returnTo: final returnTo):
+        return _BackTarget(const TabsRoute(), tab: _tabFor(returnTo));
+      case ServiceRoute(vehicleId: final id, returnTo: final returnTo):
+        return _BackTarget(VehicleRoute(id, returnTo: returnTo));
+      case EditServiceRoute(vehicleId: final id, returnTo: final returnTo):
+        return returnTo == 'manage'
+            ? _BackTarget(ManageRoute(vehicleId: id, returnTo: 'vehicle'))
+            : _BackTarget(VehicleRoute(id, returnTo: returnTo ?? 'home'));
+      case AddLogRoute(vehicleId: final id, returnTo: final returnTo):
+        return returnTo == 'home' ? _BackTarget(const TabsRoute(), tab: AppTab.home) : _BackTarget(VehicleRoute(id));
+      case ManageRoute(vehicleId: final id, returnTo: final returnTo):
+        return returnTo == 'setup' ? _BackTarget(const TabsRoute(), tab: AppTab.setup) : _BackTarget(VehicleRoute(id));
+    }
+  }
+
+  /// Pops back to whatever `_backTargetFor(_route)` resolves to (slides out
+  /// to the right, revealing the destination underneath). No-op at the root.
+  void _goBack() {
+    final target = _backTargetFor(_route);
+    if (target == null) return;
+    _lastNavWasBack = true;
+    setState(() {
+      if (target.tab != null) _tab = target.tab!;
+      _route = target.route;
     });
   }
 
@@ -167,6 +214,7 @@ class _RootPageState extends State<RootPage> {
       if (l.odometer > maxOdo) maxOdo = l.odometer;
     }
     final updated = vehicle.copyWith(odometer: maxOdo, logs: [...vehicle.logs, ...logs]);
+    _lastNavWasBack = true;
     setState(() {
       _vehicles = _vehicles.map((v) => v.id == updated.id ? updated : v).toList();
       _route = VehicleRoute(vehicle.id, returnTo: _resolveTabReturnTo(returnTo));
@@ -174,35 +222,22 @@ class _RootPageState extends State<RootPage> {
     _persistVehicles();
   }
 
-  void _openVehicle(String id, String returnTo) => setState(() => _route = VehicleRoute(id, returnTo: returnTo));
-
-  @override
-  Widget build(BuildContext context) {
-    final brightness = Theme.of(context).brightness;
-    final c = brightness == Brightness.dark ? AppColors.dark : AppColors.light;
-
-    if (!_ready) {
-      return AnnotatedRegion<SystemUiOverlayStyle>(
-        value: brightness == Brightness.dark ? SystemUiOverlayStyle.light : SystemUiOverlayStyle.dark,
-        child: ColoredBox(color: c.bg),
-      );
-    }
-
-    final route = _route;
-    final showTabs = route is TabsRoute;
-
-    Widget body;
+  /// Builds the full screen (including its own SafeArea, and the tab bar for
+  /// the tabs root) for [route]/[tab]. Pure given the current app state, so
+  /// it can be used both for what's on screen now and for the edge-swipe's
+  /// "reveal what's behind" preview.
+  Widget _buildScreen(AppRoute route, AppTab tab) {
     switch (route) {
       case TabsRoute():
-        body = switch (_tab) {
+        final tabContent = switch (tab) {
           AppTab.home => HomeScreen(
               vehicles: _vehicles,
-              onOpenVehicle: (id) => _openVehicle(id, 'home'),
-              onAddVehicle: () => setState(() => _route = const AddVehicleRoute(returnTo: 'home')),
+              onOpenVehicle: (id) => _navigate(VehicleRoute(id, returnTo: 'home')),
+              onAddVehicle: () => _navigate(const AddVehicleRoute(returnTo: 'home')),
               onOpenCategory: (vehicleId, categoryId) =>
-                  setState(() => _route = AddLogRoute(vehicleId: vehicleId, categoryId: categoryId, returnTo: 'home')),
+                  _navigate(AddLogRoute(vehicleId: vehicleId, categoryId: categoryId, returnTo: 'home')),
             ),
-          AppTab.log => LogScreen(vehicles: _vehicles, onOpenVehicle: (id) => _openVehicle(id, 'log')),
+          AppTab.log => LogScreen(vehicles: _vehicles, onOpenVehicle: (id) => _navigate(VehicleRoute(id, returnTo: 'log'))),
           AppTab.setup => SetupScreen(
               vehicles: _vehicles,
               configs: _configs,
@@ -210,111 +245,151 @@ class _RootPageState extends State<RootPage> {
                 setState(() => _configs = list);
                 _persistConfigs();
               },
-              onAddVehicle: () => setState(() => _route = const AddVehicleRoute(returnTo: 'setup')),
-              onManage: (id) => setState(() => _route = ManageRoute(vehicleId: id, returnTo: 'setup')),
-              onCreateFromConfig: (cfg) => setState(() => _route = AddVehicleRoute(
+              onAddVehicle: () => _navigate(const AddVehicleRoute(returnTo: 'setup')),
+              onManage: (id) => _navigate(ManageRoute(vehicleId: id, returnTo: 'setup')),
+              onCreateFromConfig: (cfg) => _navigate(AddVehicleRoute(
                     returnTo: 'setup',
                     configId: cfg.builtin ? 'default' : cfg.id,
                     vehicleType: cfg.type,
                   )),
             ),
         };
-      case AddVehicleRoute(returnTo: final returnTo, configId: final configId, vehicleType: final vehicleType):
-        body = AddVehicleScreen(
-          configs: _configs,
-          initialConfigId: configId,
-          initialType: vehicleType,
-          onBack: () => _goToTabOrHome(returnTo),
-          onSave: (v) {
-            setState(() {
-              _vehicles = [..._vehicles, v];
-              _route = VehicleRoute(v.id, returnTo: returnTo ?? 'home');
-            });
-            _persistVehicles();
-          },
+        return SafeArea(
+          key: const ValueKey('tabs'),
+          bottom: false,
+          child: Column(
+            children: [
+              Expanded(child: tabContent),
+              AppTabBar(tab: tab, onChanged: (t) => setState(() => _tab = t)),
+            ],
+          ),
         );
+
+      case AddVehicleRoute(returnTo: final returnTo, configId: final configId, vehicleType: final vehicleType):
+        return SafeArea(
+          key: const ValueKey('addVehicle'),
+          child: AddVehicleScreen(
+            configs: _configs,
+            initialConfigId: configId,
+            initialType: vehicleType,
+            onBack: _goBack,
+            onSave: (v) {
+              _lastNavWasBack = false;
+              setState(() {
+                _vehicles = [..._vehicles, v];
+                _route = VehicleRoute(v.id, returnTo: returnTo ?? 'home');
+              });
+              _persistVehicles();
+            },
+          ),
+        );
+
       case VehicleRoute(vehicleId: final id, returnTo: final returnTo):
         final vehicle = _findVehicle(id);
-        body = vehicle == null
-            ? const SizedBox.shrink()
-            : VehicleScreen(
-                key: ValueKey('vehicle-$id'),
-                vehicle: vehicle,
-                onBack: () => _goToTabOrHome(returnTo),
-                onOpenCategory: (catId) =>
-                    setState(() => _route = AddLogRoute(vehicleId: id, categoryId: catId, returnTo: 'vehicle')),
-                onManage: () => setState(() => _route = ManageRoute(vehicleId: id, returnTo: 'vehicle')),
-                onOpenService: (packageId) =>
-                    setState(() => _route = ServiceRoute(vehicleId: id, packageId: packageId, returnTo: returnTo)),
-                onAddService: () => setState(() => _route = EditServiceRoute(vehicleId: id, returnTo: returnTo)),
-                onUpdateOdo: (val) => _updateVehicle(vehicle.copyWith(odometer: val)),
-                onUpdatePhotos: (photos) => _updateVehicle(vehicle.copyWith(photos: photos)),
-              );
+        return SafeArea(
+          key: ValueKey('vehicle-$id'),
+          child: vehicle == null
+              ? const SizedBox.shrink()
+              : VehicleScreen(
+                  vehicle: vehicle,
+                  onBack: _goBack,
+                  onOpenCategory: (catId) => _navigate(AddLogRoute(vehicleId: id, categoryId: catId, returnTo: 'vehicle')),
+                  onManage: () => _navigate(ManageRoute(vehicleId: id, returnTo: 'vehicle')),
+                  onOpenService: (packageId) => _navigate(ServiceRoute(vehicleId: id, packageId: packageId, returnTo: returnTo)),
+                  onAddService: () => _navigate(EditServiceRoute(vehicleId: id, returnTo: returnTo)),
+                  onUpdateOdo: (val) => _updateVehicle(vehicle.copyWith(odometer: val)),
+                  onUpdatePhotos: (photos) => _updateVehicle(vehicle.copyWith(photos: photos)),
+                ),
+        );
+
       case ServiceRoute(vehicleId: final id, packageId: final packageId, returnTo: final returnTo):
         final vehicle = _findVehicle(id);
-        body = vehicle == null
-            ? const SizedBox.shrink()
-            : ServiceScreen(
-                vehicle: vehicle,
-                packageId: packageId,
-                onBack: () => setState(() => _route = VehicleRoute(id, returnTo: returnTo)),
-                onSave: (logs) => _addLogsBatch(vehicle, logs, returnTo),
-              );
+        return SafeArea(
+          key: ValueKey('service-$id-$packageId'),
+          child: vehicle == null
+              ? const SizedBox.shrink()
+              : ServiceScreen(
+                  vehicle: vehicle,
+                  packageId: packageId,
+                  onBack: _goBack,
+                  onSave: (logs) => _addLogsBatch(vehicle, logs, returnTo),
+                ),
+        );
+
       case EditServiceRoute(vehicleId: final id, serviceId: final serviceId, returnTo: final returnTo):
         final vehicle = _findVehicle(id);
-        body = vehicle == null
-            ? const SizedBox.shrink()
-            : EditServiceScreen(
-                vehicle: vehicle,
-                serviceId: serviceId,
-                onBack: () => setState(() => _route = returnTo == 'manage'
-                    ? ManageRoute(vehicleId: id, returnTo: 'vehicle')
-                    : VehicleRoute(id, returnTo: returnTo ?? 'home')),
-                onUpdateVehicle: _updateVehicle,
-              );
+        return SafeArea(
+          key: ValueKey('editService-$id-${serviceId ?? "new"}-$returnTo'),
+          child: vehicle == null
+              ? const SizedBox.shrink()
+              : EditServiceScreen(
+                  vehicle: vehicle,
+                  serviceId: serviceId,
+                  onBack: _goBack,
+                  onUpdateVehicle: _updateVehicle,
+                ),
+        );
+
       case AddLogRoute(vehicleId: final id, categoryId: final categoryId, returnTo: final returnTo):
         final vehicle = _findVehicle(id);
         final category = vehicle?.categories.where((c) => c.id == categoryId).firstOrNull;
-        body = (vehicle == null || category == null)
-            ? const SizedBox.shrink()
-            : AddLogScreen(
-                vehicle: vehicle,
-                category: category,
-                onBack: () => returnTo == 'home' ? _goToTabOrHome('home') : setState(() => _route = VehicleRoute(id)),
-                onSave: (log) => _addLogsBatch(vehicle, [log], returnTo),
-              );
+        return SafeArea(
+          key: ValueKey('addLog-$id-$categoryId-$returnTo'),
+          child: (vehicle == null || category == null)
+              ? const SizedBox.shrink()
+              : AddLogScreen(
+                  vehicle: vehicle,
+                  category: category,
+                  onBack: _goBack,
+                  onSave: (log) => _addLogsBatch(vehicle, [log], returnTo),
+                ),
+        );
+
       case ManageRoute(vehicleId: final id, returnTo: final returnTo):
         final vehicle = _findVehicle(id);
-        body = vehicle == null
-            ? const SizedBox.shrink()
-            : ManageCategoriesScreen(
-                key: ValueKey('manage-$id'),
-                vehicle: vehicle,
-                onBack: () => returnTo == 'setup' ? _goToTabOrHome('setup') : setState(() => _route = VehicleRoute(id)),
-                onUpdateVehicle: _updateVehicle,
-                onEditService: (serviceId) =>
-                    setState(() => _route = EditServiceRoute(vehicleId: id, serviceId: serviceId, returnTo: 'manage')),
-                onAddService: () => setState(() => _route = EditServiceRoute(vehicleId: id, returnTo: 'manage')),
-                onSaveConfig: (cfg) {
-                  setState(() => _configs = [..._configs, cfg]);
-                  _persistConfigs();
-                },
-              );
+        return SafeArea(
+          key: ValueKey('manage-$id-$returnTo'),
+          child: vehicle == null
+              ? const SizedBox.shrink()
+              : ManageCategoriesScreen(
+                  vehicle: vehicle,
+                  onBack: _goBack,
+                  onUpdateVehicle: _updateVehicle,
+                  onEditService: (serviceId) =>
+                      _navigate(EditServiceRoute(vehicleId: id, serviceId: serviceId, returnTo: 'manage')),
+                  onAddService: () => _navigate(EditServiceRoute(vehicleId: id, returnTo: 'manage')),
+                  onSaveConfig: (cfg) {
+                    setState(() => _configs = [..._configs, cfg]);
+                    _persistConfigs();
+                  },
+                ),
+        );
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final brightness = Theme.of(context).brightness;
+    final overlayStyle = brightness == Brightness.dark ? SystemUiOverlayStyle.light : SystemUiOverlayStyle.dark;
+
+    if (!_ready) {
+      return AnnotatedRegion<SystemUiOverlayStyle>(value: overlayStyle, child: const SplashScreen());
     }
 
+    final backTarget = _backTargetFor(_route);
+    final current = _buildScreen(_route, _tab);
+    final behind = backTarget != null ? _buildScreen(backTarget.route, backTarget.tab ?? _tab) : null;
+    final c = brightness == Brightness.dark ? AppColors.dark : AppColors.light;
+
     return AnnotatedRegion<SystemUiOverlayStyle>(
-      value: brightness == Brightness.dark ? SystemUiOverlayStyle.light : SystemUiOverlayStyle.dark,
+      value: overlayStyle,
       child: Scaffold(
         backgroundColor: c.bg,
-        body: SafeArea(
-          top: true,
-          bottom: !showTabs,
-          child: Column(
-            children: [
-              Expanded(child: body),
-              if (showTabs) AppTabBar(tab: _tab, onChanged: (t) => setState(() => _tab = t)),
-            ],
-          ),
+        body: ScreenTransition(
+          onBack: backTarget != null ? _goBack : null,
+          behind: behind,
+          isBack: _lastNavWasBack,
+          child: current,
         ),
       ),
     );
