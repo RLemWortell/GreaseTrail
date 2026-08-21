@@ -58,7 +58,7 @@ class _VehicleScreenState extends State<VehicleScreen> {
     if (_busy) return;
     setState(() => _busy = true);
     try {
-      await exportPdf([widget.vehicle]);
+      await exportPdf([widget.vehicle], context);
     } catch (e) {
       if (mounted) {
         await showDialog<void>(

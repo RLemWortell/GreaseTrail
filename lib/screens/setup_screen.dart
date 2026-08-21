@@ -46,7 +46,7 @@ class _SetupScreenState extends State<SetupScreen> {
     );
   }
 
-  Future<void> _runExport(String kind, Future<void> Function(List<Vehicle>) fn) async {
+  Future<void> _runExport(String kind, Future<void> Function(List<Vehicle>, BuildContext) fn) async {
     if (_busy != null) return;
     if (widget.vehicles.isEmpty) {
       await _notify('Export', 'Add a vehicle first.');
@@ -54,7 +54,7 @@ class _SetupScreenState extends State<SetupScreen> {
     }
     setState(() => _busy = kind);
     try {
-      await fn(widget.vehicles);
+      await fn(widget.vehicles, context);
     } catch (e) {
       await _notify('Export failed', '$e');
     } finally {
@@ -182,7 +182,7 @@ class _SetupScreenState extends State<SetupScreen> {
                       CardRow(onPress: () => widget.onCreateFromConfig(open), chevron: true, left: 'Create vehicle'),
                       CardRow(onPress: () => _duplicate(open), chevron: true, left: 'Duplicate'),
                       CardRow(
-                        onPress: () => exportConfig(open).catchError((e) => _notify('Export failed', '$e')),
+                        onPress: () => exportConfig(open, context).catchError((e) => _notify('Export failed', '$e')),
                         chevron: true,
                         left: 'Export',
                         divider: !open.builtin,
@@ -250,7 +250,7 @@ class _SetupScreenState extends State<SetupScreen> {
                       ),
                       for (var i = 0; i < widget.vehicles.length; i++)
                         CardRow(
-                          onPress: () => _runExport('pdf-${widget.vehicles[i].id}', (vs) => exportPdf([widget.vehicles[i]])),
+                          onPress: () => _runExport('pdf-${widget.vehicles[i].id}', (vs, ctx) => exportPdf([widget.vehicles[i]], ctx)),
                           chevron: true,
                           left: widget.vehicles[i].name,
                           right: _busy == 'pdf-${widget.vehicles[i].id}' ? '…' : null,

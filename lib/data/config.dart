@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:file_picker/file_picker.dart';
+import 'package:flutter/widgets.dart' show BuildContext;
 
 import '../models.dart';
 import '../storage.dart' as storage;
@@ -209,7 +210,7 @@ GtConfig parseConfig(String raw) {
   );
 }
 
-Future<void> exportConfig(GtConfig config) async {
+Future<void> exportConfig(GtConfig config, BuildContext context) async {
   final payload = {
     'app': 'GreaseTrail',
     'kind': 'config',
@@ -219,7 +220,12 @@ Future<void> exportConfig(GtConfig config) async {
     'categories': config.categories.map((c) => c.toJson()).toList(),
     'services': config.services.map((s) => s.toJson()).toList(),
   };
-  await shareJsonFile('greasetrail-config-${slug(config.name)}.json', const JsonEncoder.withIndent('  ').convert(payload), 'Export config');
+  await shareJsonFile(
+    'greasetrail-config-${slug(config.name)}.json',
+    const JsonEncoder.withIndent('  ').convert(payload),
+    'Export config',
+    context,
+  );
 }
 
 Future<GtConfig?> importConfigFile() async {

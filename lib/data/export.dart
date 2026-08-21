@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'dart:io';
 
+import 'package:flutter/material.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
@@ -157,28 +158,47 @@ Future<File> _writeCache(String name, List<int> bytes) async {
   return file;
 }
 
-Future<void> _shareFile(File file, {required String mimeType, String? subject}) async {
-  await Share.shareXFiles([XFile(file.path, mimeType: mimeType)], subject: subject);
+/// iOS requires a non-zero anchor rect for the share sheet's popover
+/// (notably on iPad); derive one from wherever the export was triggered.
+Rect _sharePositionOrigin(BuildContext context) {
+  final box = context.findRenderObject();
+  if (box is RenderBox && box.hasSize) {
+    return box.localToGlobal(Offset.zero) & box.size;
+  }
+  final size = MediaQuery.of(context).size;
+  return Rect.fromLTWH(0, 0, size.width, size.height / 2);
 }
 
-Future<void> exportJson(List<Vehicle> vehicles) async {
+Future<void> _shareFile(File file, BuildContext context, {required String mimeType, String? subject}) async {
+  await Share.shareXFiles(
+    [XFile(file.path, mimeType: mimeType)],
+    subject: subject,
+    sharePositionOrigin: _sharePositionOrigin(context),
+  );
+}
+
+Future<void> exportJson(List<Vehicle> vehicles, BuildContext context) async {
   final file = await _writeCache('greasetrail-${_stamp()}.json', utf8.encode(buildJson(vehicles)));
-  await _shareFile(file, mimeType: 'application/json', subject: 'Export JSON');
+  if (!context.mounted) return;
+  await _shareFile(file, context, mimeType: 'application/json', subject: 'Export JSON');
 }
 
-Future<void> exportCsv(List<Vehicle> vehicles) async {
+Future<void> exportCsv(List<Vehicle> vehicles, BuildContext context) async {
   final file = await _writeCache('greasetrail-${_stamp()}.csv', utf8.encode(buildCsv(vehicles)));
-  await _shareFile(file, mimeType: 'text/csv', subject: 'Export CSV');
+  if (!context.mounted) return;
+  await _shareFile(file, context, mimeType: 'text/csv', subject: 'Export CSV');
 }
 
-Future<void> exportPdf(List<Vehicle> vehicles) async {
+Future<void> exportPdf(List<Vehicle> vehicles, BuildContext context) async {
   final label = vehicles.length == 1 ? slug(vehicles.first.name) : 'all';
   final bytes = await buildPdfDocument(vehicles).save();
   final file = await _writeCache('greasetrail-$label-${_stamp()}.pdf', bytes);
-  await _shareFile(file, mimeType: 'application/pdf', subject: 'Export PDF');
+  if (!context.mounted) return;
+  await _shareFile(file, context, mimeType: 'application/pdf', subject: 'Export PDF');
 }
 
-Future<void> shareJsonFile(String filename, String contents, String subject) async {
+Future<void> shareJsonFile(String filename, String contents, String subject, BuildContext context) async {
   final file = await _writeCache(filename, utf8.encode(contents));
-  await _shareFile(file, mimeType: 'application/json', subject: subject);
+  if (!context.mounted) return;
+  await _shareFile(file, context, mimeType: 'application/json', subject: subject);
 }
