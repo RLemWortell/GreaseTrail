@@ -65,7 +65,15 @@ class _ScreenTransitionState extends State<ScreenTransition> with SingleTickerPr
     _to = widget.child;
     _forward = !widget.isBack;
     _controller.value = 0;
-    _controller.animateTo(1, duration: const Duration(milliseconds: 340), curve: Curves.easeOutCubic);
+    _controller.animateTo(1, duration: const Duration(milliseconds: 340), curve: Curves.easeOutCubic).then((_) {
+      // Guard against a since-superseded transition (e.g. rapid nav) clearing
+      // state that a newer didUpdateWidget call just set up.
+      if (!mounted || _swipeCommitting || _controller.value != 1) return;
+      setState(() {
+        _from = null;
+        _to = null;
+      });
+    });
   }
 
   @override
