@@ -108,27 +108,32 @@ class _ServiceScreenState extends State<ServiceScreen> {
                   padding: const EdgeInsets.all(AppSpace.cardPad),
                   children: [PhotoStrip(uris: _photos, editable: true, onChange: (p) => setState(() => _photos = p))],
                 ),
-                ActionRow(
-                  label: checked.isNotEmpty ? 'Save · ${checked.length}' : 'Tick items first',
-                  onPressed: () {
-                    if (checked.isEmpty) return;
-                    final odometer = double.tryParse(_odo) ?? 0;
-                    widget.onSave([
-                      for (final cat in checked)
-                        LogEntry(
-                          categoryId: cat.id,
-                          categoryName: cat.name,
-                          date: _date,
-                          odometer: odometer,
-                          values: _values[cat.id] ?? {},
-                          note: _note,
-                          service: pack.name,
-                          photos: _photos,
-                        ),
-                    ]);
-                  },
-                ),
               ],
+            ),
+          ),
+          Container(
+            padding: const EdgeInsets.fromLTRB(AppSpace.side, 14, AppSpace.side, 14),
+            decoration: BoxDecoration(color: c.bg, border: Border(top: BorderSide(color: c.hairline, width: AppSpace.hairline))),
+            child: PrimaryButton(
+              label: checked.isNotEmpty ? 'Save · ${checked.length}' : 'Tick items first',
+              onPressed: checked.isEmpty
+                  ? null
+                  : () {
+                      final odometer = double.tryParse(_odo) ?? 0;
+                      widget.onSave([
+                        for (final cat in checked)
+                          LogEntry(
+                            categoryId: cat.id,
+                            categoryName: cat.name,
+                            date: _date,
+                            odometer: odometer,
+                            values: _values[cat.id] ?? {},
+                            note: _note,
+                            service: pack.name,
+                            photos: _photos,
+                          ),
+                      ]);
+                    },
             ),
           ),
         ],

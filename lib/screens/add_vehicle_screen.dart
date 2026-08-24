@@ -128,8 +128,8 @@ class _AddVehicleScreenState extends State<AddVehicleScreen> {
           children: [
             _SummarySelection(type: _type, configLabel: selectedConfigLabel, onEdit: () => goToStep(0)),
             AppCard(children: [
-              AppField(label: 'Name', value: _name, placeholder: 'e.g. Suzuki V-Strom', onChanged: (v) => setState(() => _name = v)),
-              AppField(label: 'Model', value: _model, placeholder: 'e.g. DL650', onChanged: (v) => _model = v),
+              AppField(label: 'Name', value: _name, placeholder: "e.g. Dad's Oldtimer", onChanged: (v) => setState(() => _name = v)),
+              AppField(label: 'Model', value: _model, placeholder: 'e.g. model or trim', onChanged: (v) => _model = v),
               AppField(
                 label: 'Odometer',
                 value: _odo,

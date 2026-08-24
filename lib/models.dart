@@ -453,7 +453,7 @@ Vehicle seedVehicle(String type, String name, String model, double odo) {
 }
 
 List<Vehicle> seedDemoData() {
-  final v = seedVehicle('motorcycle', 'Suzuki V-Strom', 'DL650', 34210);
+  final v = seedVehicle('motorcycle', "Dad's Oldtimer", '', 34210);
   Category byName(String name) => v.categories.firstWhere((c) => c.name == name);
   final tire = byName('Tire pressure');
   final oil = byName('Oil change');

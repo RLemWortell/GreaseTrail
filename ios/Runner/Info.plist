@@ -28,6 +28,8 @@
 	<true/>
 	<key>NSCameraUsageDescription</key>
 	<string>GreaseTrail uses the camera to photograph work on your vehicles.</string>
+	<key>NSLocationWhenInUseUsageDescription</key>
+	<string>GreaseTrail does not use your location.</string>
 	<key>NSPhotoLibraryUsageDescription</key>
 	<string>GreaseTrail uses photos for your vehicles and service log.</string>
 	<key>UIApplicationSceneManifest</key>
@@ -57,6 +59,8 @@
 	<string>LaunchScreen</string>
 	<key>UIMainStoryboardFile</key>
 	<string>Main</string>
+	<key>UIRequiresFullScreen</key>
+	<true/>
 	<key>UISupportedInterfaceOrientations</key>
 	<array>
 		<string>UIInterfaceOrientationPortrait</string>

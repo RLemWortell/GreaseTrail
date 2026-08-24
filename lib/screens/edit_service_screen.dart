@@ -41,11 +41,12 @@ class _EditServiceScreenState extends State<EditServiceScreen> {
     });
   }
 
+  bool get _canSave => _name.trim().isNotEmpty && _selected.isNotEmpty;
+
   void _save() {
+    if (!_canSave) return;
     final trimmed = _name.trim();
-    if (trimmed.isEmpty) return;
     final categoryIds = widget.vehicle.categories.map((c) => c.id).where(_selected.contains).toList();
-    if (categoryIds.isEmpty) return;
     widget.onUpdateVehicle(upsertService(widget.vehicle, ServicePackage(id: _existing?.id, name: trimmed, categoryIds: categoryIds)));
     widget.onBack();
   }
@@ -86,7 +87,7 @@ class _EditServiceScreenState extends State<EditServiceScreen> {
               keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
               children: [
                 AppCard(children: [
-                  AppField(label: 'Name', value: _name, placeholder: 'e.g. Chain weekend', last: true, onChanged: (v) => _name = v),
+                  AppField(label: 'Name', value: _name, placeholder: 'e.g. Chain weekend', last: true, onChanged: (v) => setState(() => _name = v)),
                 ]),
                 const SizedBox(height: AppSpace.block),
                 const Label('Items', margin: EdgeInsets.only(bottom: 10)),
@@ -102,10 +103,14 @@ class _EditServiceScreenState extends State<EditServiceScreen> {
                         last: i == categories.length - 1,
                       ),
                   ]),
-                ActionRow(label: 'Save service', onPressed: _save),
                 if (_existing != null) ActionRow(label: 'Remove service', onPressed: _remove, destructive: true),
               ],
             ),
+          ),
+          Container(
+            padding: const EdgeInsets.fromLTRB(AppSpace.side, 14, AppSpace.side, 14),
+            decoration: BoxDecoration(color: c.bg, border: Border(top: BorderSide(color: c.hairline, width: AppSpace.hairline))),
+            child: PrimaryButton(label: 'Save service', onPressed: _canSave ? _save : null),
           ),
         ],
       ),

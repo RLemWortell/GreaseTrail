@@ -1,0 +1,121 @@
+{
+  "schemaVersion": 2,
+  "appName": "GreaseTrail",
+  "themeId": "clean-light",
+  "connectedCanvas": false,
+  "locales": [
+    "en"
+  ],
+  "locale": "en",
+  "device": "ipad",
+  "orientation": "portrait",
+  "appIcon": "/app-icon.png",
+  "slidesByDevice": {
+    "iphone": [
+      {
+        "id": "gt_iphone_1",
+        "layout": "hero",
+        "label": {
+          "en": "GREASETRAIL"
+        },
+        "headline": {
+          "en": "Never miss\na service again."
+        },
+        "screenshot": "/screenshots/apple/iphone/{locale}/01.png"
+      },
+      {
+        "id": "gt_iphone_2",
+        "layout": "device-bottom",
+        "label": {
+          "en": "MAINTENANCE LOG"
+        },
+        "headline": {
+          "en": "Every fix,\nin one log."
+        },
+        "screenshot": "/screenshots/apple/iphone/{locale}/02.png"
+      },
+      {
+        "id": "gt_iphone_3",
+        "layout": "device-bottom",
+        "label": {
+          "en": "PER VEHICLE"
+        },
+        "headline": {
+          "en": "One place for\nevery detail."
+        },
+        "screenshot": "/screenshots/apple/iphone/{locale}/03.png"
+      },
+      {
+        "id": "gt_iphone_4",
+        "layout": "device-top",
+        "label": {
+          "en": "MAKE IT YOURS"
+        },
+        "headline": {
+          "en": "Configs, colors,\nyour own setup."
+        },
+        "screenshot": "/screenshots/apple/iphone/{locale}/04.png",
+        "inverted": true
+      },
+      {
+        "id": "gt_iphone_5",
+        "layout": "device-bottom",
+        "label": {
+          "en": "GET STARTED"
+        },
+        "headline": {
+          "en": "Add a vehicle\nin seconds."
+        },
+        "screenshot": "/screenshots/apple/iphone/{locale}/05.png"
+      }
+    ],
+    "android": [],
+    "ipad": [
+      {
+        "id": "gt_ipad_1",
+        "layout": "hero",
+        "label": {
+          "en": "GREASETRAIL"
+        },
+        "headline": {
+          "en": "Your whole garage,\non the big screen."
+        },
+        "screenshot": "/screenshots/apple/ipad/{locale}/01.png"
+      },
+      {
+        "id": "gt_ipad_2",
+        "layout": "device-bottom",
+        "label": {
+          "en": "PER VEHICLE"
+        },
+        "headline": {
+          "en": "Every detail,\none tap away."
+        },
+        "screenshot": "/screenshots/apple/ipad/{locale}/02.png"
+      },
+      {
+        "id": "gt_ipad_3",
+        "layout": "device-top",
+        "label": {
+          "en": "MAKE IT YOURS"
+        },
+        "headline": {
+          "en": "Set up once,\nready every time."
+        },
+        "screenshot": "/screenshots/apple/ipad/{locale}/03.png",
+        "inverted": true
+      }
+    ],
+    "android-7": [],
+    "android-10": [],
+    "feature-graphic": []
+  },
+  "crossScreenMockupsByDevice": {
+    "iphone": [],
+    "ipad": [],
+    "android": [],
+    "android-7": [],
+    "android-10": [],
+    "feature-graphic": []
+  }
+}
