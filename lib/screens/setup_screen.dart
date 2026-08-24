@@ -14,6 +14,9 @@ class SetupScreen extends StatefulWidget {
   final ValueChanged<String> onManage;
   final VoidCallback onAddVehicle;
   final ValueChanged<GtConfig> onCreateFromConfig;
+  final ValueChanged<String> onOpenConfig;
+  final Color? accent;
+  final ValueChanged<Color?> onAccentChange;
 
   const SetupScreen({
     super.key,
@@ -23,6 +26,9 @@ class SetupScreen extends StatefulWidget {
     required this.onManage,
     required this.onAddVehicle,
     required this.onCreateFromConfig,
+    required this.onOpenConfig,
+    required this.accent,
+    required this.onAccentChange,
   });
 
   @override
@@ -31,7 +37,6 @@ class SetupScreen extends StatefulWidget {
 
 class _SetupScreenState extends State<SetupScreen> {
   String? _busy;
-  String? _openId;
   bool _pdfPick = false;
 
   Future<void> _notify(String title, String message) async {
@@ -62,36 +67,12 @@ class _SetupScreenState extends State<SetupScreen> {
     }
   }
 
-  void _duplicate(GtConfig cfg) {
-    final copy = duplicateConfig(cfg);
-    widget.onConfigsChange([...widget.configs, copy]);
-    setState(() => _openId = copy.id);
-  }
-
-  Future<void> _remove(GtConfig cfg) async {
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: Text('Remove "${cfg.name}"?'),
-        content: const Text('Vehicles already created from it stay as they are.'),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
-          TextButton(onPressed: () => Navigator.pop(ctx, true), child: Text('Remove', style: TextStyle(color: AppColors.of(ctx).alert))),
-        ],
-      ),
-    );
-    if (confirmed == true) {
-      widget.onConfigsChange(widget.configs.where((x) => x.id != cfg.id).toList());
-      setState(() => _openId = null);
-    }
-  }
-
   Future<void> _importFile() async {
     try {
       final cfg = await importConfigFile();
       if (cfg == null) return;
       widget.onConfigsChange([...widget.configs, cfg]);
-      setState(() => _openId = cfg.id);
+      widget.onOpenConfig(cfg.id);
     } catch (e) {
       await _notify('Import failed', '$e');
     }
@@ -101,7 +82,6 @@ class _SetupScreenState extends State<SetupScreen> {
   Widget build(BuildContext context) {
     final c = AppColors.of(context);
     final all = [...builtinConfigs(), ...widget.configs];
-    final open = all.where((cfg) => cfg.id == _openId).firstOrNull;
 
     return Container(
       color: c.bg,
@@ -133,6 +113,7 @@ class _SetupScreenState extends State<SetupScreen> {
                                 type: widget.vehicles[i].type,
                                 size: 32,
                                 photo: widget.vehicles[i].photos.isNotEmpty ? widget.vehicles[i].photos.first : null,
+                                color: widget.vehicles[i].color,
                               ),
                               const SizedBox(width: 12),
                               Column(
@@ -157,70 +138,35 @@ class _SetupScreenState extends State<SetupScreen> {
                   ),
                 const SizedBox(height: AppSpace.block),
                 const SectionHeader('Configs'),
-                if (open != null) ...[
-                  AppCard(
-                    margin: const EdgeInsets.only(top: 14),
-                    children: [
-                      CardRow(onPress: () => setState(() => _openId = null), left: open.name, right: 'Close'),
-                      CardRow(left: 'Type', right: typeMeta[open.type]?.label ?? open.type),
-                      CardRow(left: 'Categories', right: '${open.categories.length}', divider: open.categories.isNotEmpty),
-                      for (var i = 0; i < open.categories.length; i++)
-                        CardRow(
-                          left: open.categories[i].name,
-                          right: open.categories[i].intervalKm != null
-                              ? '${open.categories[i].intervalKm} km'
-                              : open.categories[i].intervalMonths != null
-                                  ? '${open.categories[i].intervalMonths} mo'
-                                  : '',
-                          divider: i < open.categories.length - 1,
-                        ),
-                    ],
-                  ),
-                  AppCard(
-                    margin: const EdgeInsets.only(top: 12),
-                    children: [
-                      CardRow(onPress: () => widget.onCreateFromConfig(open), chevron: true, left: 'Create vehicle'),
-                      CardRow(onPress: () => _duplicate(open), chevron: true, left: 'Duplicate'),
+                AppCard(
+                  margin: const EdgeInsets.only(top: 14),
+                  children: [
+                    for (var i = 0; i < all.length; i++)
                       CardRow(
-                        onPress: () => exportConfig(open, context).catchError((e) => _notify('Export failed', '$e')),
+                        onPress: () => widget.onOpenConfig(all[i].id),
                         chevron: true,
-                        left: 'Export',
-                        divider: !open.builtin,
-                      ),
-                      if (!open.builtin) CardRow(onPress: () => _remove(open), left: 'Delete', divider: false),
-                    ],
-                  ),
-                ] else ...[
-                  AppCard(
-                    margin: const EdgeInsets.only(top: 14),
-                    children: [
-                      for (var i = 0; i < all.length; i++)
-                        CardRow(
-                          onPress: () => setState(() => _openId = all[i].id),
-                          chevron: true,
-                          divider: i < all.length - 1,
-                          left: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              AppText.row(all[i].name, color: c.ink),
-                              Padding(
-                                padding: const EdgeInsets.only(top: 2),
-                                child: AppText.small(
-                                  '${typeMeta[all[i].type]?.label ?? all[i].type}  ·  ${all[i].categories.length} categories'
-                                  '${all[i].builtin ? '  ·  default' : ''}',
-                                  color: c.muted,
-                                ),
+                        divider: i < all.length - 1,
+                        left: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            AppText.row(all[i].name, color: c.ink),
+                            Padding(
+                              padding: const EdgeInsets.only(top: 2),
+                              child: AppText.small(
+                                '${typeMeta[all[i].type]?.label ?? all[i].type}  ·  ${all[i].categories.length} categories'
+                                '${all[i].builtin ? '  ·  default' : ''}',
+                                color: c.muted,
                               ),
-                            ],
-                          ),
+                            ),
+                          ],
                         ),
-                    ],
-                  ),
-                  AppCard(
-                    margin: const EdgeInsets.only(top: 12),
-                    children: [CardRow(onPress: _importFile, chevron: true, left: 'Import file', divider: false)],
-                  ),
-                ],
+                      ),
+                  ],
+                ),
+                AppCard(
+                  margin: const EdgeInsets.only(top: 12),
+                  children: [CardRow(onPress: _importFile, chevron: true, left: 'Import file', divider: false)],
+                ),
                 const SizedBox(height: AppSpace.block),
                 const SectionHeader('Export data'),
                 AppCard(
@@ -262,6 +208,29 @@ class _SetupScreenState extends State<SetupScreen> {
                   padding: const EdgeInsets.only(top: 10),
                   child: Text(
                     'Configs are the checklist setup only. Data export includes logs and odometer.',
+                    style: AppTypography.small.copyWith(color: c.muted, height: 1.3),
+                  ),
+                ),
+                const SizedBox(height: AppSpace.block),
+                const SectionHeader('Appearance'),
+                AppCard(
+                  margin: const EdgeInsets.only(top: 14),
+                  children: [
+                    const Padding(
+                      padding: EdgeInsets.fromLTRB(AppSpace.cardPad, 12, AppSpace.cardPad, 0),
+                      child: Label('Accent color'),
+                    ),
+                    ColorSwatchPicker(
+                      colors: accentSwatches,
+                      value: widget.accent ?? accentSwatches.first,
+                      onSelected: (color) => widget.onAccentChange(color == accentSwatches.first ? null : color),
+                    ),
+                  ],
+                ),
+                Padding(
+                  padding: const EdgeInsets.only(top: 10),
+                  child: Text(
+                    'Vehicles can override this with their own color — see a vehicle\'s Manage screen.',
                     style: AppTypography.small.copyWith(color: c.muted, height: 1.3),
                   ),
                 ),

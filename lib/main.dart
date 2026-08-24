@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import 'data/config.dart' as config_data;
+import 'data/photos.dart';
 import 'models.dart';
 import 'storage.dart';
 import 'theme.dart';
@@ -17,19 +18,40 @@ import 'screens/service_screen.dart';
 import 'screens/edit_service_screen.dart';
 import 'screens/add_log_screen.dart';
 import 'screens/manage_categories_screen.dart';
+import 'screens/edit_config_screen.dart';
 
 void main() {
   runApp(const GreaseTrailApp());
 }
 
-class GreaseTrailApp extends StatelessWidget {
+class GreaseTrailApp extends StatefulWidget {
   const GreaseTrailApp({super.key});
+
+  @override
+  State<GreaseTrailApp> createState() => _GreaseTrailAppState();
+}
+
+class _GreaseTrailAppState extends State<GreaseTrailApp> {
+  Color? _accent;
+
+  @override
+  void initState() {
+    super.initState();
+    loadAccentColor().then((value) {
+      if (mounted && value != null) setState(() => _accent = Color(value));
+    });
+  }
+
+  void _setAccent(Color? color) {
+    setState(() => _accent = color);
+    saveAccentColor(color?.toARGB32());
+  }
 
   ThemeData _theme(AppColors c, Brightness brightness) => ThemeData(
         useMaterial3: true,
         brightness: brightness,
         scaffoldBackgroundColor: c.bg,
-        colorScheme: ColorScheme.fromSeed(seedColor: c.accent, brightness: brightness),
+        colorScheme: ColorScheme.fromSeed(seedColor: _accent ?? c.accent, brightness: brightness),
         splashFactory: NoSplash.splashFactory,
       );
 
@@ -41,7 +63,8 @@ class GreaseTrailApp extends StatelessWidget {
       themeMode: ThemeMode.system,
       theme: _theme(AppColors.light, Brightness.light),
       darkTheme: _theme(AppColors.dark, Brightness.dark),
-      home: const RootPage(),
+      builder: (context, child) => AccentScope(accent: _accent, child: child!),
+      home: RootPage(accent: _accent, onAccentChange: _setAccent),
     );
   }
 }
@@ -94,6 +117,11 @@ class ManageRoute extends AppRoute {
   const ManageRoute({required this.vehicleId, required this.returnTo});
 }
 
+class ConfigRoute extends AppRoute {
+  final String configId;
+  const ConfigRoute(this.configId);
+}
+
 /// Where a route's back action lands, and which tab should be selected if
 /// that destination is the tabs root.
 class _BackTarget {
@@ -103,7 +131,10 @@ class _BackTarget {
 }
 
 class RootPage extends StatefulWidget {
-  const RootPage({super.key});
+  final Color? accent;
+  final ValueChanged<Color?> onAccentChange;
+
+  const RootPage({super.key, required this.accent, required this.onAccentChange});
 
   @override
   State<RootPage> createState() => _RootPageState();
@@ -159,6 +190,34 @@ class _RootPageState extends State<RootPage> {
     _persistVehicles();
   }
 
+  config_data.GtConfig? _findConfig(String id) {
+    for (final cfg in config_data.builtinConfigs()) {
+      if (cfg.id == id) return cfg;
+    }
+    for (final cfg in _configs) {
+      if (cfg.id == id) return cfg;
+    }
+    return null;
+  }
+
+  void _updateConfig(config_data.GtConfig updated) {
+    setState(() => _configs = _configs.map((c) => c.id == updated.id ? updated : c).toList());
+    _persistConfigs();
+  }
+
+  void _duplicateConfig(config_data.GtConfig cfg) {
+    final copy = config_data.duplicateConfig(cfg);
+    setState(() => _configs = [..._configs, copy]);
+    _persistConfigs();
+    _navigate(ConfigRoute(copy.id));
+  }
+
+  void _deleteConfig(String id) {
+    setState(() => _configs = _configs.where((c) => c.id != id).toList());
+    _persistConfigs();
+    _goBack();
+  }
+
   static String _resolveTabReturnTo(String? value) => (value == 'home' || value == 'log' || value == 'setup') ? value! : 'home';
 
   static AppTab _tabFor(String? returnTo) => switch (returnTo) {
@@ -193,6 +252,8 @@ class _RootPageState extends State<RootPage> {
         return returnTo == 'home' ? _BackTarget(const TabsRoute(), tab: AppTab.home) : _BackTarget(VehicleRoute(id));
       case ManageRoute(vehicleId: final id, returnTo: final returnTo):
         return returnTo == 'setup' ? _BackTarget(const TabsRoute(), tab: AppTab.setup) : _BackTarget(VehicleRoute(id));
+      case ConfigRoute():
+        return _BackTarget(const TabsRoute(), tab: AppTab.setup);
     }
   }
 
@@ -206,6 +267,27 @@ class _RootPageState extends State<RootPage> {
       if (target.tab != null) _tab = target.tab!;
       _route = target.route;
     });
+  }
+
+  void _deleteVehicle(String id, String returnTo) {
+    final vehicle = _findVehicle(id);
+    _lastNavWasBack = true;
+    setState(() {
+      _vehicles = _vehicles.where((v) => v.id != id).toList();
+      _tab = _tabFor(returnTo);
+      _route = const TabsRoute();
+    });
+    _persistVehicles();
+    if (vehicle != null) {
+      for (final uri in vehicle.photos) {
+        removePhotoFile(uri);
+      }
+      for (final log in vehicle.logs) {
+        for (final uri in log.photos) {
+          removePhotoFile(uri);
+        }
+      }
+    }
   }
 
   void _addLogsBatch(Vehicle vehicle, List<LogEntry> logs, String? returnTo) {
@@ -252,6 +334,9 @@ class _RootPageState extends State<RootPage> {
                     configId: cfg.builtin ? 'default' : cfg.id,
                     vehicleType: cfg.type,
                   )),
+              onOpenConfig: (id) => _navigate(ConfigRoute(id)),
+              accent: widget.accent,
+              onAccentChange: widget.onAccentChange,
             ),
         };
         return SafeArea(
@@ -358,10 +443,32 @@ class _RootPageState extends State<RootPage> {
                   onEditService: (serviceId) =>
                       _navigate(EditServiceRoute(vehicleId: id, serviceId: serviceId, returnTo: 'manage')),
                   onAddService: () => _navigate(EditServiceRoute(vehicleId: id, returnTo: 'manage')),
+                  onDeleteVehicle: () => _deleteVehicle(id, returnTo),
                   onSaveConfig: (cfg) {
                     setState(() => _configs = [..._configs, cfg]);
                     _persistConfigs();
                   },
+                ),
+        );
+
+      case ConfigRoute(configId: final id):
+        final cfg = _findConfig(id);
+        return SafeArea(
+          key: ValueKey('config-$id'),
+          child: cfg == null
+              ? const SizedBox.shrink()
+              : EditConfigScreen(
+                  config: cfg,
+                  onBack: _goBack,
+                  onUpdate: _updateConfig,
+                  onDuplicate: () => _duplicateConfig(cfg),
+                  onCreateVehicle: () => _navigate(AddVehicleRoute(
+                        returnTo: 'setup',
+                        configId: cfg.builtin ? 'default' : cfg.id,
+                        vehicleType: cfg.type,
+                      )),
+                  onExport: () => config_data.exportConfig(cfg, context),
+                  onDelete: cfg.builtin ? null : () => _deleteConfig(cfg.id),
                 ),
         );
     }

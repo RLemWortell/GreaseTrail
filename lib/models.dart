@@ -189,6 +189,8 @@ class Vehicle {
   // null = not yet computed/persisted for this vehicle (older data); fall back to
   // defaultServices(vehicle). An explicit empty list means the user removed them all.
   final List<ServicePackage>? services;
+  // null = use the app-wide accent color.
+  final int? colorValue;
 
   Vehicle({
     required this.type,
@@ -199,11 +201,14 @@ class Vehicle {
     List<LogEntry>? logs,
     List<String>? photos,
     this.services,
+    this.colorValue,
     String? id,
   })  : id = id ?? uid(),
         categories = categories ?? const [],
         logs = logs ?? const [],
         photos = photos ?? const [];
+
+  Color? get color => colorValue != null ? Color(colorValue!) : null;
 
   Vehicle copyWith({
     double? odometer,
@@ -211,6 +216,8 @@ class Vehicle {
     List<LogEntry>? logs,
     List<String>? photos,
     List<ServicePackage>? services,
+    int? colorValue,
+    bool clearColor = false,
   }) =>
       Vehicle(
         id: id,
@@ -222,6 +229,7 @@ class Vehicle {
         logs: logs ?? this.logs,
         photos: photos ?? this.photos,
         services: services ?? this.services,
+        colorValue: clearColor ? null : (colorValue ?? this.colorValue),
       );
 
   Map<String, dynamic> toJson() => {
@@ -234,6 +242,7 @@ class Vehicle {
         'logs': logs.map((l) => l.toJson()).toList(),
         'photos': photos,
         'services': services?.map((s) => s.toJson()).toList(),
+        'colorValue': colorValue,
       };
 
   factory Vehicle.fromJson(Map<String, dynamic> json) => Vehicle(
@@ -246,6 +255,7 @@ class Vehicle {
         logs: (json['logs'] as List? ?? []).map((e) => LogEntry.fromJson(e as Map<String, dynamic>)).toList(),
         photos: (json['photos'] as List? ?? []).map((e) => e as String).toList(),
         services: (json['services'] as List?)?.map((e) => ServicePackage.fromJson(e as Map<String, dynamic>)).toList(),
+        colorValue: json['colorValue'] as int?,
       );
 }
 

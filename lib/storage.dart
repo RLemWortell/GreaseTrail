@@ -6,6 +6,30 @@ import 'models.dart';
 
 const _kVehiclesKey = 'greasetrail:vehicles:v1';
 const _kConfigsKey = 'greasetrail:configs:v1';
+const _kAccentKey = 'greasetrail:accent:v1';
+
+Future<int?> loadAccentColor() async {
+  try {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getInt(_kAccentKey);
+  } catch (e) {
+    debugPrintWarning('GreaseTrail: failed to load accent color: $e');
+    return null;
+  }
+}
+
+Future<void> saveAccentColor(int? value) async {
+  try {
+    final prefs = await SharedPreferences.getInstance();
+    if (value == null) {
+      await prefs.remove(_kAccentKey);
+    } else {
+      await prefs.setInt(_kAccentKey, value);
+    }
+  } catch (e) {
+    debugPrintWarning('GreaseTrail: failed to save accent color: $e');
+  }
+}
 
 Future<List<Vehicle>?> loadVehicles() async {
   try {

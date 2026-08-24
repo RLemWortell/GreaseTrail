@@ -46,6 +46,7 @@ class LogScreen extends StatelessWidget {
                           for (var i = 0; i < entries.length; i++)
                             CardRow(
                               onPress: () => onOpenVehicle(entries[i].vehicle.id),
+                              dotColor: entries[i].vehicle.color ?? c.accent,
                               left: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [

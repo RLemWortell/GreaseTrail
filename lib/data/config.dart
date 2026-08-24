@@ -56,6 +56,22 @@ class ConfigCategorySpec {
         intervalMonths: c.intervalMonths,
         fields: c.fields.map(ConfigFieldSpec.fromFieldDef).toList(),
       );
+
+  ConfigCategorySpec copyWith({
+    String? name,
+    List<ConfigFieldSpec>? fields,
+    int? intervalKm,
+    bool clearIntervalKm = false,
+    int? intervalMonths,
+    bool clearIntervalMonths = false,
+  }) {
+    return ConfigCategorySpec(
+      name: name ?? this.name,
+      fields: fields ?? this.fields,
+      intervalKm: clearIntervalKm ? null : (intervalKm ?? this.intervalKm),
+      intervalMonths: clearIntervalMonths ? null : (intervalMonths ?? this.intervalMonths),
+    );
+  }
 }
 
 class ConfigServiceSpec {
@@ -108,6 +124,17 @@ class GtConfig {
         categories: (json['categories'] as List? ?? []).map((e) => ConfigCategorySpec.fromJson(e as Map<String, dynamic>)).toList(),
         services: (json['services'] as List? ?? []).map((e) => ConfigServiceSpec.fromJson(e as Map<String, dynamic>)).toList(),
       );
+
+  GtConfig copyWith({String? name, List<ConfigCategorySpec>? categories, List<ConfigServiceSpec>? services}) {
+    return GtConfig(
+      id: id,
+      builtin: builtin,
+      name: name ?? this.name,
+      type: type,
+      categories: categories ?? this.categories,
+      services: services ?? this.services,
+    );
+  }
 }
 
 Future<List<GtConfig>> loadConfigs() async {

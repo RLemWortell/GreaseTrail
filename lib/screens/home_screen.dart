@@ -27,7 +27,8 @@ class _AttentionRow {
   final AttentionItem item;
   final String vehicleId;
   final String vehicleName;
-  _AttentionRow(this.item, this.vehicleId, this.vehicleName);
+  final Color? vehicleColor;
+  _AttentionRow(this.item, this.vehicleId, this.vehicleName, this.vehicleColor);
 }
 
 class _HomeScreenState extends State<HomeScreen> {
@@ -43,7 +44,7 @@ class _HomeScreenState extends State<HomeScreen> {
   Widget build(BuildContext context) {
     final c = AppColors.of(context);
     final filtered = _filtered;
-    final attention = filtered.expand((v) => getAttentionItems(v).map((item) => _AttentionRow(item, v.id, v.name))).toList();
+    final attention = filtered.expand((v) => getAttentionItems(v).map((item) => _AttentionRow(item, v.id, v.name, v.color))).toList();
 
     return Container(
       color: c.bg,
@@ -77,7 +78,7 @@ class _HomeScreenState extends State<HomeScreen> {
                       for (var i = 0; i < attention.length; i++)
                         CardRow(
                           onPress: () => widget.onOpenCategory(attention[i].vehicleId, attention[i].item.id),
-                          dot: DueLevel.overdue,
+                          dotColor: attention[i].item.level == DueLevel.overdue ? (attention[i].vehicleColor ?? c.accent) : c.soon,
                           left: filtered.length > 1 ? '${attention[i].vehicleName} · ${attention[i].item.name}' : attention[i].item.name,
                           right: attention[i].item.label,
                           divider: i < attention.length - 1,
@@ -117,7 +118,7 @@ class _VehicleCard extends StatelessWidget {
               padding: const EdgeInsets.fromLTRB(AppSpace.cardPad, 16, AppSpace.cardPad, 14),
               child: Row(
                 children: [
-                  TypeIcon(type: vehicle.type, photo: vehicle.photos.isNotEmpty ? vehicle.photos.first : null),
+                  TypeIcon(type: vehicle.type, photo: vehicle.photos.isNotEmpty ? vehicle.photos.first : null, color: vehicle.color),
                   const SizedBox(width: 12),
                   Expanded(
                     child: Column(
@@ -163,7 +164,7 @@ class _VehicleCard extends StatelessWidget {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.end,
                         children: [
-                          if (counts.overdue > 0) AppText.meta('·  ${counts.overdue} overdue', color: c.accent),
+                          if (counts.overdue > 0) AppText.meta('·  ${counts.overdue} overdue', color: vehicle.color ?? c.accent),
                           if (counts.overdue > 0 && counts.soon > 0) const SizedBox(height: 6),
                           if (counts.soon > 0) AppText.meta('·  ${counts.soon} due soon', color: c.soon),
                         ],

@@ -239,8 +239,9 @@ class TypeIcon extends StatelessWidget {
   final String type;
   final double size;
   final String? photo;
+  final Color? color;
 
-  const TypeIcon({super.key, required this.type, this.size = 36, this.photo});
+  const TypeIcon({super.key, required this.type, this.size = 36, this.photo, this.color});
 
   static const _icons = {
     'motorcycle': Icons.motorcycle,
@@ -266,7 +267,7 @@ class TypeIcon extends StatelessWidget {
     return Container(
       width: size,
       height: size,
-      decoration: BoxDecoration(color: c.iconBg, borderRadius: BorderRadius.circular(8)),
+      decoration: BoxDecoration(color: color ?? c.iconBg, borderRadius: BorderRadius.circular(8)),
       alignment: Alignment.center,
       child: Icon(_icons[type] ?? Icons.directions_car, size: size * 0.55, color: c.iconFg),
     );
@@ -280,6 +281,7 @@ class CardRow extends StatelessWidget {
   final Object left;
   final Object? right;
   final DueLevel? dot;
+  final Color? dotColor;
   final VoidCallback? onPress;
   final bool divider;
   final bool chevron;
@@ -289,6 +291,7 @@ class CardRow extends StatelessWidget {
     required this.left,
     this.right,
     this.dot,
+    this.dotColor,
     this.onPress,
     this.divider = true,
     this.chevron = false,
@@ -299,14 +302,15 @@ class CardRow extends StatelessWidget {
     final c = AppColors.of(context);
     final leftWidget = left is String ? AppText.row(left as String, color: c.ink) : left as Widget;
     final rightWidget = right == null ? null : (right is String ? AppText.meta(right as String, color: c.muted) : right as Widget);
+    final dotDeco = dotColor != null ? BoxDecoration(shape: BoxShape.circle, color: dotColor) : (dot != null ? dotDecoration(dot!, c) : null);
 
     final content = Container(
       constraints: const BoxConstraints(minHeight: 48),
       padding: const EdgeInsets.symmetric(horizontal: AppSpace.cardPad, vertical: AppSpace.rowY),
       child: Row(
         children: [
-          if (dot != null) ...[
-            Container(width: 7, height: 7, decoration: dotDecoration(dot!, c)),
+          if (dotDeco != null) ...[
+            Container(width: 7, height: 7, decoration: dotDeco),
             const SizedBox(width: 12),
           ],
           Expanded(child: leftWidget),
@@ -523,6 +527,43 @@ class OptionList<T> extends StatelessWidget {
   }
 }
 
+/// A full-width filled call-to-action button. Disabled (dimmed, non-tappable)
+/// when [onPressed] is null.
+class PrimaryButton extends StatelessWidget {
+  final String label;
+  final VoidCallback? onPressed;
+
+  const PrimaryButton({super.key, required this.label, required this.onPressed});
+
+  @override
+  Widget build(BuildContext context) {
+    final c = AppColors.of(context);
+    final enabled = onPressed != null;
+    return SizedBox(
+      width: double.infinity,
+      height: 52,
+      child: Material(
+        color: enabled ? c.accent : c.hairline,
+        borderRadius: BorderRadius.circular(14),
+        child: InkWell(
+          onTap: onPressed,
+          borderRadius: BorderRadius.circular(14),
+          child: Center(
+            child: Text(
+              label.toUpperCase(),
+              style: AppTypography.label.copyWith(
+                color: enabled ? c.iconFg : c.faint,
+                fontWeight: FontWeight.w700,
+                letterSpacing: 1.6,
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
 class ActionRow extends StatelessWidget {
   final String label;
   final VoidCallback onPressed;
@@ -545,6 +586,42 @@ class ActionRow extends StatelessWidget {
             letterSpacing: 1.6,
           ),
         ),
+      ),
+    );
+  }
+}
+
+/// A row of tappable color swatches, used by the app-wide and per-vehicle
+/// accent color pickers. [value] is the currently selected color, if any of
+/// [colors] matches it.
+class ColorSwatchPicker extends StatelessWidget {
+  final List<Color> colors;
+  final Color? value;
+  final ValueChanged<Color> onSelected;
+
+  const ColorSwatchPicker({super.key, required this.colors, required this.value, required this.onSelected});
+
+  @override
+  Widget build(BuildContext context) {
+    final c = AppColors.of(context);
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: AppSpace.cardPad, vertical: AppSpace.rowY),
+      child: Wrap(
+        spacing: 14,
+        runSpacing: 14,
+        children: [
+          for (final swatch in colors)
+            GestureDetector(
+              onTap: () => onSelected(swatch),
+              child: Container(
+                width: 34,
+                height: 34,
+                decoration: BoxDecoration(shape: BoxShape.circle, color: swatch),
+                alignment: Alignment.center,
+                child: value == swatch ? Icon(Icons.check, size: 16, color: c.iconFg) : null,
+              ),
+            ),
+        ],
       ),
     );
   }

@@ -28,6 +28,7 @@ class ManageCategoriesScreen extends StatefulWidget {
   final ValueChanged<String> onEditService;
   final VoidCallback onAddService;
   final ValueChanged<GtConfig>? onSaveConfig;
+  final VoidCallback onDeleteVehicle;
 
   const ManageCategoriesScreen({
     super.key,
@@ -36,6 +37,7 @@ class ManageCategoriesScreen extends StatefulWidget {
     required this.onUpdateVehicle,
     required this.onEditService,
     required this.onAddService,
+    required this.onDeleteVehicle,
     this.onSaveConfig,
   });
 
@@ -118,6 +120,21 @@ class _ManageCategoriesScreenState extends State<ManageCategoriesScreen> {
     if (confirmed == true) {
       _commit(_categories.where((cat) => cat.id != catId).toList());
     }
+  }
+
+  Future<void> _confirmDeleteVehicle() async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text('Delete "${widget.vehicle.name}"?'),
+        content: const Text("This permanently removes the vehicle and all its logged history. This can't be undone."),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
+          TextButton(onPressed: () => Navigator.pop(ctx, true), child: Text('Delete', style: TextStyle(color: AppColors.of(ctx).alert))),
+        ],
+      ),
+    );
+    if (confirmed == true) widget.onDeleteVehicle();
   }
 
   void _openAddField(String catId) => setState(() => _fieldForm = _FieldForm(catId: catId));
@@ -372,6 +389,29 @@ class _ManageCategoriesScreenState extends State<ManageCategoriesScreen> {
                     CardRow(onPress: () => widget.onEditService(pack.id), chevron: true, left: pack.name, right: '${pack.categories.length} items'),
                   CardRow(onPress: widget.onAddService, left: AppText.meta('+ Add service', color: c.ink), divider: false),
                 ]),
+                const SizedBox(height: AppSpace.block),
+                const Label('Appearance', margin: EdgeInsets.only(bottom: 10)),
+                AppCard(children: [
+                  CheckRow(
+                    label: 'Use app accent color',
+                    checked: widget.vehicle.color == null,
+                    onToggle: () => widget.onUpdateVehicle(widget.vehicle.copyWith(clearColor: true)),
+                    last: true,
+                  ),
+                ]),
+                AppCard(
+                  margin: const EdgeInsets.only(top: 12),
+                  children: [
+                    ColorSwatchPicker(
+                      colors: accentSwatches,
+                      value: widget.vehicle.color,
+                      onSelected: (color) => widget.onUpdateVehicle(widget.vehicle.copyWith(colorValue: color.toARGB32())),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: AppSpace.block),
+                const Label('Danger zone', margin: EdgeInsets.only(bottom: 10)),
+                ActionRow(label: 'Delete vehicle', onPressed: _confirmDeleteVehicle, destructive: true),
               ],
             ),
           ),

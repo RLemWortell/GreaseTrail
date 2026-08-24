@@ -148,7 +148,10 @@ class _VehicleScreenState extends State<VehicleScreen> {
                     for (var i = 0; i < vehicle.categories.length; i++)
                       CardRow(
                         onPress: () => widget.onOpenCategory(vehicle.categories[i].id),
-                        dot: getStatus(vehicle, vehicle.categories[i])?.level,
+                        dot: getStatus(vehicle, vehicle.categories[i])?.level == DueLevel.overdue
+                            ? null
+                            : getStatus(vehicle, vehicle.categories[i])?.level,
+                        dotColor: getStatus(vehicle, vehicle.categories[i])?.level == DueLevel.overdue ? (vehicle.color ?? c.accent) : null,
                         chevron: true,
                         divider: i < vehicle.categories.length - 1,
                         left: _CategorySummary(vehicle: vehicle, category: vehicle.categories[i]),

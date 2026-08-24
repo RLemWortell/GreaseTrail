@@ -72,9 +72,57 @@ class AppColors {
     dotOff: Color(0xFF4A4A44),
   );
 
-  static AppColors of(BuildContext context) =>
-      Theme.of(context).brightness == Brightness.dark ? dark : light;
+  static AppColors of(BuildContext context) {
+    final base = Theme.of(context).brightness == Brightness.dark ? dark : light;
+    final override = AccentScope.maybeOf(context);
+    return override != null ? base.copyWith(accent: override) : base;
+  }
+
+  AppColors copyWith({Color? accent}) => AppColors(
+        bg: bg,
+        surface: surface,
+        card: card,
+        ink: ink,
+        muted: muted,
+        faint: faint,
+        hairline: hairline,
+        border: border,
+        accent: accent ?? this.accent,
+        soon: soon,
+        alert: alert,
+        iconBg: iconBg,
+        iconFg: iconFg,
+        photo: photo,
+        dotOff: dotOff,
+      );
 }
+
+/// Provides an app-wide accent color override (from the user's Setup choice)
+/// to every [AppColors.of] call below it in the tree. `null` means "use the
+/// palette's built-in default".
+class AccentScope extends InheritedWidget {
+  final Color? accent;
+  const AccentScope({super.key, required this.accent, required super.child});
+
+  static Color? maybeOf(BuildContext context) => context.dependOnInheritedWidgetOfExactType<AccentScope>()?.accent;
+
+  @override
+  bool updateShouldNotify(AccentScope oldWidget) => oldWidget.accent != accent;
+}
+
+/// Curated accent choices offered by the app-wide and per-vehicle color
+/// pickers. The first entry is the app's built-in default.
+const List<Color> accentSwatches = [
+  Color(0xFF9E5E3D), // terracotta (default)
+  Color(0xFFB2452F), // rust red
+  Color(0xFFB8862F), // mustard
+  Color(0xFF4C7A4A), // forest green
+  Color(0xFF2F7A6E), // teal
+  Color(0xFF3C6E91), // ocean blue
+  Color(0xFF5B5FA8), // indigo
+  Color(0xFF8A4B8C), // plum
+  Color(0xFF6B6B66), // stone gray
+];
 
 enum DueLevel { overdue, soon, ok }
 
