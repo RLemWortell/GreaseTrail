@@ -107,8 +107,9 @@ class EditServiceRoute extends AppRoute {
 class AddLogRoute extends AppRoute {
   final String vehicleId;
   final String categoryId;
+  final String? logId;
   final String returnTo;
-  const AddLogRoute({required this.vehicleId, required this.categoryId, required this.returnTo});
+  const AddLogRoute({required this.vehicleId, required this.categoryId, this.logId, required this.returnTo});
 }
 
 class ManageRoute extends AppRoute {
@@ -304,6 +305,21 @@ class _RootPageState extends State<RootPage> {
     _persistVehicles();
   }
 
+  void _updateLog(Vehicle vehicle, LogEntry log) {
+    var maxOdo = vehicle.odometer;
+    if (log.odometer > maxOdo) maxOdo = log.odometer;
+    final updated = vehicle.copyWith(odometer: maxOdo, logs: vehicle.logs.map((l) => l.id == log.id ? log : l).toList());
+    _updateVehicle(updated);
+  }
+
+  void _deleteLog(Vehicle vehicle, LogEntry log) {
+    final updated = vehicle.copyWith(logs: vehicle.logs.where((l) => l.id != log.id).toList());
+    _updateVehicle(updated);
+    for (final uri in log.photos) {
+      removePhotoFile(uri);
+    }
+  }
+
   /// Builds the full screen (including its own SafeArea, and the tab bar for
   /// the tabs root) for [route]/[tab]. Pure given the current app state, so
   /// it can be used both for what's on screen now and for the edge-swipe's
@@ -319,7 +335,17 @@ class _RootPageState extends State<RootPage> {
               onOpenCategory: (vehicleId, categoryId) =>
                   _navigate(AddLogRoute(vehicleId: vehicleId, categoryId: categoryId, returnTo: 'home')),
             ),
-          AppTab.log => LogScreen(vehicles: _vehicles, onOpenVehicle: (id) => _navigate(VehicleRoute(id, returnTo: 'log'))),
+          AppTab.log => LogScreen(
+              vehicles: _vehicles,
+              onOpenVehicle: (id) => _navigate(VehicleRoute(id, returnTo: 'log')),
+              onOpenLog: (vehicleId, categoryId, logId) =>
+                  _navigate(AddLogRoute(vehicleId: vehicleId, categoryId: categoryId, logId: logId, returnTo: 'log')),
+              onDeleteLog: (vehicleId, logId) {
+                final vehicle = _findVehicle(vehicleId);
+                final log = vehicle?.logs.where((l) => l.id == logId).firstOrNull;
+                if (vehicle != null && log != null) _deleteLog(vehicle, log);
+              },
+            ),
           AppTab.setup => SetupScreen(
               vehicles: _vehicles,
               configs: _configs,
@@ -384,6 +410,15 @@ class _RootPageState extends State<RootPage> {
                   onAddService: () => _navigate(EditServiceRoute(vehicleId: id, returnTo: returnTo)),
                   onUpdateOdo: (val) => _updateVehicle(vehicle.copyWith(odometer: val)),
                   onUpdatePhotos: (photos) => _updateVehicle(vehicle.copyWith(photos: photos)),
+                  onOpenLog: (logId) {
+                    final log = vehicle.logs.where((l) => l.id == logId).firstOrNull;
+                    if (log == null) return;
+                    _navigate(AddLogRoute(vehicleId: id, categoryId: log.categoryId, logId: logId, returnTo: 'vehicle'));
+                  },
+                  onDeleteLog: (logId) {
+                    final log = vehicle.logs.where((l) => l.id == logId).firstOrNull;
+                    if (log != null) _deleteLog(vehicle, log);
+                  },
                 ),
         );
 
@@ -415,18 +450,33 @@ class _RootPageState extends State<RootPage> {
                 ),
         );
 
-      case AddLogRoute(vehicleId: final id, categoryId: final categoryId, returnTo: final returnTo):
+      case AddLogRoute(vehicleId: final id, categoryId: final categoryId, logId: final logId, returnTo: final returnTo):
         final vehicle = _findVehicle(id);
         final category = vehicle?.categories.where((c) => c.id == categoryId).firstOrNull;
+        final existing = logId != null ? vehicle?.logs.where((l) => l.id == logId).firstOrNull : null;
         return SafeArea(
-          key: ValueKey('addLog-$id-$categoryId-$returnTo'),
+          key: ValueKey('addLog-$id-$categoryId-${logId ?? "new"}-$returnTo'),
           child: (vehicle == null || category == null)
               ? const SizedBox.shrink()
               : AddLogScreen(
                   vehicle: vehicle,
                   category: category,
+                  existing: existing,
                   onBack: _goBack,
-                  onSave: (log) => _addLogsBatch(vehicle, [log], returnTo),
+                  onSave: (log) {
+                    if (existing != null) {
+                      _updateLog(vehicle, log);
+                      _goBack();
+                    } else {
+                      _addLogsBatch(vehicle, [log], returnTo);
+                    }
+                  },
+                  onDelete: existing != null
+                      ? () {
+                          _deleteLog(vehicle, existing);
+                          _goBack();
+                        }
+                      : null,
                 ),
         );
 

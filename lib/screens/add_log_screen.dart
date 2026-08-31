@@ -8,15 +8,19 @@ import '../widgets/ui.dart';
 class AddLogScreen extends StatefulWidget {
   final Vehicle vehicle;
   final Category category;
+  final LogEntry? existing;
   final VoidCallback onBack;
   final ValueChanged<LogEntry> onSave;
+  final VoidCallback? onDelete;
 
   const AddLogScreen({
     super.key,
     required this.vehicle,
     required this.category,
+    this.existing,
     required this.onBack,
     required this.onSave,
+    this.onDelete,
   });
 
   @override
@@ -25,6 +29,7 @@ class AddLogScreen extends StatefulWidget {
 
 class _AddLogScreenState extends State<AddLogScreen> {
   late Map<String, Object?> _values;
+  late final TextEditingController _noteController;
   String _note = '';
   late String _date;
   late String _odo;
@@ -33,14 +38,45 @@ class _AddLogScreenState extends State<AddLogScreen> {
   @override
   void initState() {
     super.initState();
-    _values = {for (final f in widget.category.fields) f.label: f.type == 'checkbox' ? false : ''};
-    _date = todayIso();
-    _odo = widget.vehicle.odometer.round().toString();
+    final existing = widget.existing;
+    _values = {
+      for (final f in widget.category.fields)
+        f.label: existing != null
+            ? (f.type == 'checkbox' ? existing.values[f.label] == true : (existing.values[f.label] as String?) ?? '')
+            : (f.type == 'checkbox' ? false : ''),
+    };
+    _note = existing?.note ?? '';
+    _noteController = TextEditingController(text: _note);
+    _date = existing?.date ?? todayIso();
+    _odo = (existing?.odometer ?? widget.vehicle.odometer).round().toString();
+    _photos = existing != null ? [...existing.photos] : [];
+  }
+
+  @override
+  void dispose() {
+    _noteController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _remove() async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Remove this entry?'),
+        content: const Text('This cannot be undone.'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
+          TextButton(onPressed: () => Navigator.pop(ctx, true), child: Text('Remove', style: TextStyle(color: AppColors.of(ctx).alert))),
+        ],
+      ),
+    );
+    if (confirmed == true) widget.onDelete?.call();
   }
 
   @override
   Widget build(BuildContext context) {
     final c = AppColors.of(context);
+    final existing = widget.existing;
     final inlineFields = widget.category.fields.where((f) => f.type != 'select').toList();
     final selectFields = widget.category.fields.where((f) => f.type == 'select').toList();
 
@@ -48,7 +84,11 @@ class _AddLogScreenState extends State<AddLogScreen> {
       color: c.bg,
       child: Column(
         children: [
-          TopBar(title: widget.category.name, onBack: widget.onBack),
+          TopBar(
+            title: existing != null ? 'Edit entry' : widget.category.name,
+            subtitle: existing != null ? widget.category.name : null,
+            onBack: widget.onBack,
+          ),
           Expanded(
             child: ListView(
               padding: const EdgeInsets.fromLTRB(AppSpace.side, 12, AppSpace.side, 40),
@@ -111,6 +151,7 @@ class _AddLogScreenState extends State<AddLogScreen> {
                 AppCard(
                   children: [
                     TextField(
+                      controller: _noteController,
                       onChanged: (v) => _note = v,
                       maxLines: null,
                       minLines: 3,
@@ -131,6 +172,10 @@ class _AddLogScreenState extends State<AddLogScreen> {
                   padding: const EdgeInsets.all(AppSpace.cardPad),
                   children: [PhotoStrip(uris: _photos, editable: true, onChange: (p) => setState(() => _photos = p))],
                 ),
+                if (existing != null) ...[
+                  const SizedBox(height: AppSpace.block),
+                  ActionRow(label: 'Remove entry', onPressed: _remove, destructive: true),
+                ],
               ],
             ),
           ),
@@ -138,14 +183,16 @@ class _AddLogScreenState extends State<AddLogScreen> {
             padding: const EdgeInsets.fromLTRB(AppSpace.side, 14, AppSpace.side, 14),
             decoration: BoxDecoration(color: c.bg, border: Border(top: BorderSide(color: c.hairline, width: AppSpace.hairline))),
             child: PrimaryButton(
-              label: 'Save entry',
+              label: existing != null ? 'Save changes' : 'Save entry',
               onPressed: () => widget.onSave(LogEntry(
+                id: existing?.id,
                 categoryId: widget.category.id,
                 categoryName: widget.category.name,
                 date: _date,
                 odometer: double.tryParse(_odo) ?? 0,
                 values: _values,
                 note: _note,
+                service: existing?.service,
                 photos: _photos,
               )),
             ),

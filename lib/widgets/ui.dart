@@ -350,7 +350,8 @@ class CheckRow extends StatelessWidget {
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                AppText.row(label, color: c.ink),
+                Expanded(child: AppText.row(label, color: c.ink)),
+                const SizedBox(width: 12),
                 Container(
                   width: 22,
                   height: 22,

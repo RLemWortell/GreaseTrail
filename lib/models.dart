@@ -191,6 +191,10 @@ class Vehicle {
   final List<ServicePackage>? services;
   // null = use the app-wide accent color.
   final int? colorValue;
+  // Dutch license plate (kenteken), used to look up vehicle data via RDW. Optional.
+  final String? licensePlate;
+  // 'fuel' | 'electric' | 'hybrid'. Only meaningful for car/motorcycle/scooter; null = unknown/not set.
+  final String? fuelType;
 
   Vehicle({
     required this.type,
@@ -202,6 +206,8 @@ class Vehicle {
     List<String>? photos,
     this.services,
     this.colorValue,
+    this.licensePlate,
+    this.fuelType,
     String? id,
   })  : id = id ?? uid(),
         categories = categories ?? const [],
@@ -218,6 +224,8 @@ class Vehicle {
     List<ServicePackage>? services,
     int? colorValue,
     bool clearColor = false,
+    String? licensePlate,
+    String? fuelType,
   }) =>
       Vehicle(
         id: id,
@@ -230,6 +238,8 @@ class Vehicle {
         photos: photos ?? this.photos,
         services: services ?? this.services,
         colorValue: clearColor ? null : (colorValue ?? this.colorValue),
+        licensePlate: licensePlate ?? this.licensePlate,
+        fuelType: fuelType ?? this.fuelType,
       );
 
   Map<String, dynamic> toJson() => {
@@ -243,6 +253,8 @@ class Vehicle {
         'photos': photos,
         'services': services?.map((s) => s.toJson()).toList(),
         'colorValue': colorValue,
+        'licensePlate': licensePlate,
+        'fuelType': fuelType,
       };
 
   factory Vehicle.fromJson(Map<String, dynamic> json) => Vehicle(
@@ -256,6 +268,8 @@ class Vehicle {
         photos: (json['photos'] as List? ?? []).map((e) => e as String).toList(),
         services: (json['services'] as List?)?.map((e) => ServicePackage.fromJson(e as Map<String, dynamic>)).toList(),
         colorValue: json['colorValue'] as int?,
+        licensePlate: json['licensePlate'] as String?,
+        fuelType: json['fuelType'] as String?,
       );
 }
 
@@ -272,23 +286,43 @@ const Map<String, VehicleTypeMeta> typeMeta = {
   'scooter': VehicleTypeMeta('Scooter / Moped', Icons.moped),
 };
 
+/// Vehicle types for which a fuel type (and license-plate lookup) applies.
+const fuelTypeCapableTypes = {'car', 'motorcycle', 'scooter'};
+
+class FuelTypeMeta {
+  final String label;
+  final IconData icon;
+  const FuelTypeMeta(this.label, this.icon);
+}
+
+const Map<String, FuelTypeMeta> fuelTypeMeta = {
+  'fuel': FuelTypeMeta('Fuel', Icons.local_gas_station),
+  'electric': FuelTypeMeta('Electric', Icons.bolt),
+  'hybrid': FuelTypeMeta('Hybrid', Icons.electric_car),
+};
+
 /// Category templates per vehicle type. Each call returns fresh Category/FieldDef
 /// instances (with fresh ids) so vehicles never share mutable template state.
-List<Category> templatesFor(String type) {
+/// [fuelType] ('fuel' | 'electric' | 'hybrid') only affects car/motorcycle/scooter.
+List<Category> templatesFor(String type, {String? fuelType}) {
+  final isElectric = fuelType == 'electric';
   switch (type) {
     case 'motorcycle':
       return [
         Category(name: 'Chain tension', fields: [FieldDef(label: 'Tension', unit: 'mm')], intervalKm: 1000),
-        Category(
-          name: 'Oil change',
-          fields: [
-            FieldDef(label: 'Type', type: 'select', options: const ['Full change', 'With filter', 'Topped up']),
-            FieldDef(label: 'Amount added', unit: 'L'),
-          ],
-          intervalKm: 6000,
-          intervalMonths: 12,
-        ),
-        Category(name: 'Scott oiler', fields: [FieldDef(label: 'Setting', type: 'text')]),
+        if (isElectric)
+          Category(name: 'Charging', fields: [FieldDef(label: 'Amount', unit: 'kWh'), FieldDef(label: 'Cost', unit: '€')])
+        else
+          Category(
+            name: 'Oil change',
+            fields: [
+              FieldDef(label: 'Type', type: 'select', options: const ['Full change', 'With filter', 'Topped up']),
+              FieldDef(label: 'Amount added', unit: 'L'),
+            ],
+            intervalKm: 6000,
+            intervalMonths: 12,
+          ),
+        if (!isElectric) Category(name: 'Scott oiler', fields: [FieldDef(label: 'Setting', type: 'text')]),
         Category(
           name: 'Tire pressure',
           fields: [FieldDef(label: 'Front', unit: 'bar'), FieldDef(label: 'Rear', unit: 'bar')],
@@ -299,47 +333,11 @@ List<Category> templatesFor(String type) {
           fields: [FieldDef(label: 'Front', unit: 'mm'), FieldDef(label: 'Rear', unit: 'mm')],
           intervalKm: 5000,
         ),
-        Category(name: 'Coolant', fields: [FieldDef(label: 'Topped up', unit: 'L')], intervalMonths: 12),
+        if (!isElectric) Category(name: 'Coolant', fields: [FieldDef(label: 'Topped up', unit: 'L')], intervalMonths: 12),
         Category(name: 'Battery', fields: [FieldDef(label: 'Voltage', unit: 'V')], intervalMonths: 6),
       ];
     case 'car':
-      return [
-        Category(
-          name: 'Oil change',
-          fields: [
-            FieldDef(label: 'Type', type: 'select', options: const ['Full change', 'With filter', 'Topped up']),
-            FieldDef(label: 'Amount added', unit: 'L'),
-          ],
-          intervalKm: 15000,
-          intervalMonths: 12,
-        ),
-        Category(
-          name: 'Tire pressure',
-          fields: [
-            FieldDef(label: 'Front left', unit: 'bar'),
-            FieldDef(label: 'Front right', unit: 'bar'),
-            FieldDef(label: 'Rear left', unit: 'bar'),
-            FieldDef(label: 'Rear right', unit: 'bar'),
-          ],
-          intervalMonths: 1,
-        ),
-        Category(
-          name: 'Tire tread',
-          fields: [FieldDef(label: 'Front', unit: 'mm'), FieldDef(label: 'Rear', unit: 'mm')],
-          intervalMonths: 6,
-        ),
-        Category(
-          name: 'Brake pads',
-          fields: [FieldDef(label: 'Front', unit: 'mm'), FieldDef(label: 'Rear', unit: 'mm')],
-          intervalKm: 20000,
-        ),
-        Category(name: 'Coolant', fields: [FieldDef(label: 'Topped up', unit: 'L')], intervalMonths: 24),
-        Category(
-          name: 'Wiper blades',
-          fields: [FieldDef(label: 'Front', type: 'checkbox'), FieldDef(label: 'Rear', type: 'checkbox')],
-          intervalMonths: 12,
-        ),
-      ];
+      return _carTemplates(fuelType);
     case 'bicycle':
       return [
         Category(name: 'Chain lube', fields: const [], intervalKm: 300),
@@ -357,25 +355,345 @@ List<Category> templatesFor(String type) {
       ];
     case 'scooter':
       return [
-        Category(
-          name: 'Oil change',
-          fields: [
-            FieldDef(label: 'Type', type: 'select', options: const ['Full change', 'With filter', 'Topped up']),
-            FieldDef(label: 'Amount added', unit: 'L'),
-          ],
-          intervalKm: 3000,
-          intervalMonths: 12,
-        ),
-        Category(name: 'Variator / belt', fields: [FieldDef(label: 'Condition', type: 'text')], intervalKm: 8000),
+        if (isElectric)
+          Category(name: 'Charging', fields: [FieldDef(label: 'Amount', unit: 'kWh'), FieldDef(label: 'Cost', unit: '€')])
+        else
+          Category(
+            name: 'Oil change',
+            fields: [
+              FieldDef(label: 'Type', type: 'select', options: const ['Full change', 'With filter', 'Topped up']),
+              FieldDef(label: 'Amount added', unit: 'L'),
+            ],
+            intervalKm: 3000,
+            intervalMonths: 12,
+          ),
+        if (!isElectric) Category(name: 'Variator / belt', fields: [FieldDef(label: 'Condition', type: 'text')], intervalKm: 8000),
         Category(
           name: 'Tire pressure',
           fields: [FieldDef(label: 'Front', unit: 'bar'), FieldDef(label: 'Rear', unit: 'bar')],
           intervalMonths: 1,
         ),
-        Category(name: 'Spark plug', fields: [FieldDef(label: 'Notes', type: 'text')], intervalKm: 6000),
+        if (!isElectric) Category(name: 'Spark plug', fields: [FieldDef(label: 'Notes', type: 'text')], intervalKm: 6000),
       ];
     default:
       return const [];
+  }
+}
+
+List<Category> _carTemplates(String? fuelType) {
+  final isElectric = fuelType == 'electric';
+  final isHybrid = fuelType == 'hybrid';
+  final base = <Category>[
+    if (!isElectric)
+      Category(
+        name: 'Oil change',
+        fields: [
+          FieldDef(label: 'Type', type: 'select', options: const ['Full change', 'With filter', 'Topped up']),
+          FieldDef(label: 'Amount added', unit: 'L'),
+        ],
+        intervalKm: 15000,
+        intervalMonths: 12,
+      ),
+    if (!isElectric) Category(name: 'Fuel-up', fields: [FieldDef(label: 'Amount', unit: 'L'), FieldDef(label: 'Cost', unit: '€')]),
+    if (isElectric || isHybrid)
+      Category(name: 'Charging', fields: [FieldDef(label: 'Amount', unit: 'kWh'), FieldDef(label: 'Cost', unit: '€')]),
+    Category(
+      name: 'Tire pressure',
+      fields: [
+        FieldDef(label: 'Front left', unit: 'bar'),
+        FieldDef(label: 'Front right', unit: 'bar'),
+        FieldDef(label: 'Rear left', unit: 'bar'),
+        FieldDef(label: 'Rear right', unit: 'bar'),
+      ],
+      intervalMonths: 1,
+    ),
+    Category(
+      name: 'Tire tread',
+      fields: [FieldDef(label: 'Front', unit: 'mm'), FieldDef(label: 'Rear', unit: 'mm')],
+      intervalMonths: 6,
+    ),
+    Category(
+      name: 'Brake pads',
+      fields: [FieldDef(label: 'Front', unit: 'mm'), FieldDef(label: 'Rear', unit: 'mm')],
+      intervalKm: 20000,
+    ),
+    if (!isElectric) Category(name: 'Coolant', fields: [FieldDef(label: 'Topped up', unit: 'L')], intervalMonths: 24),
+    Category(
+      name: 'Wiper blades',
+      fields: [FieldDef(label: 'Front', type: 'checkbox'), FieldDef(label: 'Rear', type: 'checkbox')],
+      intervalMonths: 12,
+    ),
+  ];
+  return [...base, ..._carMinorServiceCategories(fuelType), ..._carMajorServiceCategories(fuelType)];
+}
+
+/// The full major-service checklists per car fuel type, adapted section-by-
+/// section from a professional workshop checklist so a car's major service
+/// matches what a garage would actually run through. No intervals — these
+/// are checked together during the major service, not tracked individually.
+List<Category> _carMajorServiceCategories(String? fuelType) {
+  FieldDef check(String label) => FieldDef(label: label, type: 'checkbox');
+  switch (fuelType) {
+    case 'electric':
+      return [
+        Category(name: 'High-voltage system', fields: [
+          check('Read HV system fault codes'),
+          check('Check HV warning messages'),
+          check('Visually inspect HV wiring'),
+          check('Visually inspect HV connectors'),
+          check('Visually inspect battery pack for damage'),
+          check('Check battery housing'),
+          check('Check insulation monitoring/values'),
+          check('Check Battery Management System'),
+          check('Check battery status/SOH if available'),
+        ]),
+        Category(name: 'Charging system', fields: [
+          check('Check AC charging system'),
+          check('Check DC fast charging if applicable'),
+          check('Check charging port'),
+          check('Check charging flap'),
+          check('Check charging cable'),
+          check('Read charging fault codes'),
+        ]),
+        Category(name: 'Thermal system', fields: [
+          check('Check coolant level/condition'),
+          check('Check coolant hoses'),
+          check('Check cooling circuit for leaks'),
+          check('Check heat pump if present'),
+          check('Check electric heater'),
+        ]),
+        Category(name: 'Drivetrain', fields: [
+          check('Read/check electric motor'),
+          check('Check reduction gear/transmission'),
+          check('Check drive shafts'),
+          check('Check drive shaft boots'),
+        ]),
+        Category(name: '12V system', fields: [
+          check('Test 12V battery'),
+          check('Check DC/DC converter'),
+          check('Check 12V charging system'),
+        ]),
+        Category(name: 'Brakes', fields: [
+          check('Check brake pads'),
+          check('Check brake discs'),
+          check('Check brake calipers'),
+          check('Check brake hoses'),
+          check('Check brake fluid'),
+          check('Check electronic parking brake'),
+          check('Check regenerative braking'),
+        ]),
+        Category(name: 'Chassis & tires', fields: [
+          check('Check tire tread'),
+          check('Check tire pressure'),
+          check('Check tires for wear/damage'),
+          check('Check shock absorbers'),
+          check('Check springs'),
+          check('Check ball joints/track rod ends'),
+          check('Check control arms/bushings'),
+          check('Check wheel bearings'),
+        ]),
+        Category(name: 'Electronics & comfort', fields: [
+          check('Run diagnostics on all relevant control units'),
+          check('Check lights'),
+          check('Check wipers/washer jets'),
+          check('Check air conditioning'),
+          check('Check heating'),
+          check('Check charging/battery warnings'),
+          check('Check software/maintenance messages'),
+          check('Reset service indicator'),
+        ]),
+        Category(name: 'Final check', fields: [
+          check('Test drive'),
+          check('Check charging function'),
+          check('Check brake operation'),
+          check('Inspect vehicle underside'),
+        ]),
+      ];
+    case 'hybrid':
+      return [
+        Category(name: 'Combustion engine', fields: [
+          check('Replace engine oil'),
+          check('Replace oil filter'),
+          check('Check/replace air filter'),
+          check('Replace cabin/pollen filter'),
+          check('Check/replace spark plugs'),
+          check('Check coolant'),
+          check('Check timing system'),
+          check('Check drive belt'),
+          check('Check fuel system'),
+        ]),
+        Category(name: 'Hybrid system', fields: [
+          check('Read hybrid/HV system'),
+          check('Check HV battery'),
+          check('Check battery status/SOH if available'),
+          check('Visually inspect HV wiring'),
+          check('Visually inspect HV connectors'),
+          check('Check insulation monitoring'),
+          check('Check electric motor(s)'),
+          check('Check inverter'),
+          check('Check DC/DC converter'),
+          check('Check battery cooling system'),
+          check('Check hybrid cooling system'),
+        ]),
+        Category(name: '12V system', fields: [
+          check('Test 12V battery'),
+          check('Check 12V charging system'),
+        ]),
+        Category(name: 'Brakes', fields: [
+          check('Check brake pads'),
+          check('Check brake discs'),
+          check('Check brake calipers'),
+          check('Check brake hoses'),
+          check('Check/replace brake fluid per interval'),
+          check('Check regenerative braking'),
+          check('Check electronic parking brake'),
+        ]),
+        Category(name: 'Chassis & drivetrain', fields: [
+          check('Check tires'),
+          check('Check tire pressure'),
+          check('Check shock absorbers'),
+          check('Check springs'),
+          check('Check track rod ends/ball joints'),
+          check('Check control arms/bushings'),
+          check('Check wheel bearings'),
+          check('Check drive shafts/CV boots'),
+        ]),
+        Category(name: 'Exhaust & emissions', fields: [
+          check('Check exhaust system'),
+          check('Check catalytic converter if applicable'),
+          check('Check EGR if applicable'),
+          check('Read emissions fault codes'),
+        ]),
+        Category(name: 'Electronics', fields: [
+          check('Read all control units'),
+          check('Check lights'),
+          check('Check wipers/washer jets'),
+          check('Check air conditioning'),
+          check('Check heating'),
+          check('Check hybrid warning lights'),
+          check('Check software/service updates'),
+          check('Reset service indicator'),
+        ]),
+        Category(name: 'Final check', fields: [
+          check('Test drive'),
+          check('Check EV/hybrid operation'),
+          check('Check transition between electric and combustion'),
+          check('Check braking/regeneration'),
+          check('Final fluid level check'),
+          check('Inspect vehicle underside'),
+        ]),
+      ];
+    default: // 'fuel' or null — petrol/diesel checklist
+      return [
+        Category(name: 'Engine & fluids', fields: [
+          check('Replace engine oil'),
+          check('Replace oil filter'),
+          check('Check engine oil level'),
+          check('Check coolant level/condition'),
+          check('Check brake fluid'),
+          check('Top up washer fluid'),
+          check('Check for fluid leaks'),
+        ]),
+        Category(name: 'Filters', fields: [
+          check('Check/replace air filter'),
+          check('Replace cabin/pollen filter'),
+          check('Check/replace fuel filter'),
+        ]),
+        Category(name: 'Engine', fields: [
+          check('Read engine fault codes'),
+          check('Check/replace spark plugs (petrol)'),
+          check('Check glow plugs (diesel)'),
+          check('Check timing belt/chain'),
+          check('Check drive belt'),
+          check('Check tensioner/idler pulleys'),
+          check('Test battery'),
+          check('Check charging system/alternator'),
+        ]),
+        Category(name: 'Brakes', fields: [
+          check('Check front brake pads'),
+          check('Check rear brake pads'),
+          check('Check brake discs'),
+          check('Check brake calipers'),
+          check('Check brake hoses/leaks'),
+          check('Check handbrake/parking brake'),
+        ]),
+        Category(name: 'Chassis & steering', fields: [
+          check('Check tire tread'),
+          check('Check tire pressure'),
+          check('Check tires for damage/wear'),
+          check('Check shock absorbers'),
+          check('Check springs'),
+          check('Check ball joints/track rod ends'),
+          check('Check control arms/bushings'),
+          check('Check wheel bearings'),
+          check('Check exhaust'),
+          check('Check drive shafts/CV boots'),
+        ]),
+        Category(name: 'Lights & electronics', fields: [
+          check('Check all lights'),
+          check('Check indicators'),
+          check('Check wipers'),
+          check('Check washer jets'),
+          check('Check horn'),
+          check('Check air conditioning/heating'),
+          check('Check diagnostics/ECU'),
+          check('Reset service indicator'),
+        ]),
+        Category(name: 'Final check', fields: [
+          check('Test drive'),
+          check('Final fluid level check'),
+          check('Visually inspect engine bay'),
+          check('Inspect vehicle underside'),
+          check('Set maintenance interval'),
+        ]),
+      ];
+  }
+}
+
+/// A lighter "minor service" checklist per car fuel type — a quick interim
+/// check between major services, not a full teardown. No intervals, same
+/// reasoning as [_carMajorServiceCategories].
+List<Category> _carMinorServiceCategories(String? fuelType) {
+  FieldDef check(String label) => FieldDef(label: label, type: 'checkbox');
+  switch (fuelType) {
+    case 'electric':
+      return [
+        Category(name: 'Quick check', fields: [
+          check('Check 12V battery'),
+          check('Check charging port and cable'),
+          check('Check tire pressure'),
+          check('Check tire condition'),
+          check('Check brake fluid level'),
+          check('Check all lights'),
+          check('Check wipers'),
+        ]),
+      ];
+    case 'hybrid':
+      return [
+        Category(name: 'Quick check', fields: [
+          check('Check engine oil level'),
+          check('Check coolant level'),
+          check('Check 12V battery'),
+          check('Check brake fluid level'),
+          check('Check tire pressure'),
+          check('Check tire condition'),
+          check('Check all lights'),
+          check('Check wipers'),
+        ]),
+      ];
+    default: // 'fuel' or null
+      return [
+        Category(name: 'Quick check', fields: [
+          check('Check engine oil level'),
+          check('Check coolant level'),
+          check('Check brake fluid level'),
+          check('Check washer fluid level'),
+          check('Check tire pressure'),
+          check('Check tire condition'),
+          check('Check all lights'),
+          check('Check wipers'),
+        ]),
+      ];
   }
 }
 
@@ -386,29 +704,112 @@ class ServiceTemplate {
   const ServiceTemplate(this.id, this.name, this.items);
 }
 
-const Map<String, List<ServiceTemplate>> servicePackageTemplates = {
-  'motorcycle': [
-    ServiceTemplate('minor', 'Minor service', ['Oil change', 'Chain tension', 'Tire pressure']),
-    ServiceTemplate('major', 'Major service',
-        ['Oil change', 'Chain tension', 'Tire pressure', 'Brake pads', 'Coolant', 'Battery', 'Scott oiler']),
-  ],
-  'car': [
-    ServiceTemplate('minor', 'Minor service', ['Oil change', 'Tire pressure', 'Wiper blades']),
-    ServiceTemplate(
-        'major', 'Major service', ['Oil change', 'Tire pressure', 'Tire tread', 'Brake pads', 'Coolant', 'Wiper blades']),
-  ],
-  'bicycle': [
-    ServiceTemplate('minor', 'Minor service', ['Chain lube', 'Tire pressure']),
-    ServiceTemplate('major', 'Major service', ['Chain lube', 'Chain wear', 'Tire pressure', 'Brake pads', 'Gear cable tension']),
-  ],
-  'scooter': [
-    ServiceTemplate('minor', 'Minor service', ['Oil change', 'Tire pressure']),
-    ServiceTemplate('major', 'Major service', ['Oil change', 'Tire pressure', 'Variator / belt', 'Spark plug']),
-  ],
-};
+/// Service package templates per vehicle type. [fuelType] only affects cars
+/// (three distinct major-service checklists) and swaps 'Oil change' for
+/// 'Charging' on electric motorcycles/scooters.
+List<ServiceTemplate> servicePackageTemplatesFor(String type, {String? fuelType}) {
+  final isElectric = fuelType == 'electric';
+  switch (type) {
+    case 'motorcycle':
+      final energyItem = isElectric ? 'Charging' : 'Oil change';
+      return [
+        ServiceTemplate('minor', 'Minor service', [energyItem, 'Chain tension', 'Tire pressure']),
+        ServiceTemplate('major', 'Major service', [
+          energyItem,
+          'Chain tension',
+          'Tire pressure',
+          'Brake pads',
+          if (!isElectric) 'Coolant',
+          'Battery',
+          if (!isElectric) 'Scott oiler',
+        ]),
+      ];
+    case 'car':
+      return _carServiceTemplates(fuelType);
+    case 'bicycle':
+      return [
+        ServiceTemplate('minor', 'Minor service', ['Chain lube', 'Tire pressure']),
+        ServiceTemplate('major', 'Major service', ['Chain lube', 'Chain wear', 'Tire pressure', 'Brake pads', 'Gear cable tension']),
+      ];
+    case 'scooter':
+      final energyItem = isElectric ? 'Charging' : 'Oil change';
+      return [
+        ServiceTemplate('minor', 'Minor service', [energyItem, 'Tire pressure']),
+        ServiceTemplate('major', 'Major service',
+            [energyItem, 'Tire pressure', if (!isElectric) 'Variator / belt', if (!isElectric) 'Spark plug']),
+      ];
+    default:
+      return const [];
+  }
+}
+
+List<ServiceTemplate> _carServiceTemplates(String? fuelType) {
+  switch (fuelType) {
+    case 'electric':
+      return [
+        ServiceTemplate('minor', 'Minor service', ['Charging', 'Tire pressure', 'Wiper blades', 'Quick check']),
+        ServiceTemplate('major', 'Major service', [
+          'Charging',
+          'Tire pressure',
+          'Tire tread',
+          'Brake pads',
+          'Wiper blades',
+          'High-voltage system',
+          'Charging system',
+          'Thermal system',
+          'Drivetrain',
+          '12V system',
+          'Brakes',
+          'Chassis & tires',
+          'Electronics & comfort',
+          'Final check',
+        ]),
+      ];
+    case 'hybrid':
+      return [
+        ServiceTemplate('minor', 'Minor service', ['Oil change', 'Charging', 'Tire pressure', 'Wiper blades', 'Quick check']),
+        ServiceTemplate('major', 'Major service', [
+          'Oil change',
+          'Charging',
+          'Tire pressure',
+          'Tire tread',
+          'Brake pads',
+          'Coolant',
+          'Wiper blades',
+          'Combustion engine',
+          'Hybrid system',
+          '12V system',
+          'Brakes',
+          'Chassis & drivetrain',
+          'Exhaust & emissions',
+          'Electronics',
+          'Final check',
+        ]),
+      ];
+    default:
+      return [
+        ServiceTemplate('minor', 'Minor service', ['Oil change', 'Tire pressure', 'Wiper blades', 'Quick check']),
+        ServiceTemplate('major', 'Major service', [
+          'Oil change',
+          'Tire pressure',
+          'Tire tread',
+          'Brake pads',
+          'Coolant',
+          'Wiper blades',
+          'Engine & fluids',
+          'Filters',
+          'Engine',
+          'Brakes',
+          'Chassis & steering',
+          'Lights & electronics',
+          'Final check',
+        ]),
+      ];
+  }
+}
 
 List<ServicePackage> defaultServices(Vehicle vehicle) {
-  final templates = servicePackageTemplates[vehicle.type] ?? const [];
+  final templates = servicePackageTemplatesFor(vehicle.type, fuelType: vehicle.fuelType);
   return templates.map((pack) {
     final ids = <String>[];
     for (final itemName in pack.items) {
@@ -447,8 +848,17 @@ Vehicle removeService(Vehicle vehicle, String id) {
 Map<String, Object?> emptyFieldValues(Category category, [bool checkboxDefault = false]) =>
     {for (final f in category.fields) f.label: f.type == 'checkbox' ? checkboxDefault : ''};
 
-Vehicle seedVehicle(String type, String name, String model, double odo) {
-  final base = Vehicle(type: type, name: name, model: model, odometer: odo, categories: templatesFor(type), photos: const []);
+Vehicle seedVehicle(String type, String name, String model, double odo, {String? fuelType, String? licensePlate}) {
+  final base = Vehicle(
+    type: type,
+    name: name,
+    model: model,
+    odometer: odo,
+    categories: templatesFor(type, fuelType: fuelType),
+    photos: const [],
+    fuelType: fuelType,
+    licensePlate: licensePlate,
+  );
   return base.copyWith(services: defaultServices(base));
 }
 

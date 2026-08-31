@@ -16,6 +16,8 @@ class VehicleScreen extends StatefulWidget {
   final ValueChanged<String> onOpenService;
   final VoidCallback onAddService;
   final ValueChanged<List<String>> onUpdatePhotos;
+  final ValueChanged<String> onOpenLog;
+  final ValueChanged<String> onDeleteLog;
 
   const VehicleScreen({
     super.key,
@@ -27,6 +29,8 @@ class VehicleScreen extends StatefulWidget {
     required this.onOpenService,
     required this.onAddService,
     required this.onUpdatePhotos,
+    required this.onOpenLog,
+    required this.onDeleteLog,
   });
 
   @override
@@ -52,6 +56,21 @@ class _VehicleScreenState extends State<VehicleScreen> {
     _odoController.dispose();
     _odoFocus.dispose();
     super.dispose();
+  }
+
+  Future<bool> _confirmDeleteLog() async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Remove this entry?'),
+        content: const Text('This cannot be undone.'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
+          TextButton(onPressed: () => Navigator.pop(ctx, true), child: Text('Remove', style: TextStyle(color: AppColors.of(ctx).alert))),
+        ],
+      ),
+    );
+    return confirmed == true;
   }
 
   Future<void> _exportPdf() async {
@@ -171,10 +190,23 @@ class _VehicleScreenState extends State<VehicleScreen> {
                     margin: const EdgeInsets.only(top: 14),
                     children: [
                       for (var i = 0; i < allLogs.length; i++)
-                        CardRow(
-                          divider: i < allLogs.length - 1,
-                          left: _LogSummary(vehicle: vehicle, log: allLogs[i]),
-                          right: formatDate(allLogs[i].date),
+                        Dismissible(
+                          key: ValueKey('log-${allLogs[i].id}'),
+                          direction: DismissDirection.endToStart,
+                          background: Container(
+                            alignment: Alignment.centerRight,
+                            padding: const EdgeInsets.symmetric(horizontal: 20),
+                            color: c.alert,
+                            child: const Icon(Icons.delete_outline, color: Colors.white),
+                          ),
+                          confirmDismiss: (_) => _confirmDeleteLog(),
+                          onDismissed: (_) => widget.onDeleteLog(allLogs[i].id),
+                          child: CardRow(
+                            onPress: () => widget.onOpenLog(allLogs[i].id),
+                            divider: i < allLogs.length - 1,
+                            left: _LogSummary(vehicle: vehicle, log: allLogs[i]),
+                            right: formatDate(allLogs[i].date),
+                          ),
                         ),
                     ],
                   ),

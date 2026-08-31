@@ -154,7 +154,7 @@ List<GtConfig> builtinConfigs() {
       name: typeMeta[type]?.label ?? type,
       type: type,
       categories: templatesFor(type).map(ConfigCategorySpec.fromCategory).toList(),
-      services: (servicePackageTemplates[type] ?? const [])
+      services: servicePackageTemplatesFor(type)
           .map((p) => ConfigServiceSpec(name: p.name, items: List.of(p.items)))
           .toList(),
     );

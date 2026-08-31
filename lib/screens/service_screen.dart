@@ -37,7 +37,7 @@ class _ServiceScreenState extends State<ServiceScreen> {
     setState(() {
       _done[cat.id] = turningOn;
       if (turningOn) {
-        _values[cat.id] = emptyFieldValues(cat, true);
+        _values[cat.id] = emptyFieldValues(cat);
       } else {
         _values.remove(cat.id);
       }
@@ -141,6 +141,10 @@ class _ServiceScreenState extends State<ServiceScreen> {
     );
   }
 
+  // Each category renders as its own block — main checkbox, then (if ticked
+  // and it has fields) an indented, tinted sub-panel for its fields — with a
+  // single divider between blocks, so it's clear where the next main item
+  // starts even after a long fold-out (e.g. "Final check" with 5 items).
   List<Widget> _buildChecklistRows(List<Category> categories) {
     final rows = <Widget>[];
     for (var ci = 0; ci < categories.length; ci++) {
@@ -150,52 +154,63 @@ class _ServiceScreenState extends State<ServiceScreen> {
       final showFields = on && cat.fields.isNotEmpty;
       final catValues = _values[cat.id] ?? {};
 
-      rows.add(CheckRow(label: cat.name, checked: on, onToggle: () => _toggle(cat), last: showFields || isLastCategory));
-
-      if (showFields) {
-        final inline = cat.fields.where((f) => f.type != 'select').toList();
-        final selects = cat.fields.where((f) => f.type == 'select').toList();
-
-        for (var fi = 0; fi < inline.length; fi++) {
-          final f = inline[fi];
-          final isLastInline = isLastCategory && fi == inline.length - 1 && selects.isEmpty;
-          if (f.type == 'checkbox') {
-            rows.add(CheckRow(
-              label: f.label,
-              checked: catValues[f.label] == true,
-              onToggle: () => _setField(cat.id, f.label, !(catValues[f.label] == true)),
-              last: isLastInline,
-            ));
-          } else {
-            rows.add(AppField(
-              label: f.label,
-              unit: f.unit,
-              value: (catValues[f.label] as String?) ?? '',
-              onChanged: (v) => _setField(cat.id, f.label, v),
-              keyboardType: f.type == 'number' ? TextInputType.numberWithOptions(decimal: true) : TextInputType.text,
-              placeholder: f.unit != null ? 'e.g. 0.6' : '',
-              last: isLastInline,
-            ));
-          }
-        }
-
-        for (var si = 0; si < selects.length; si++) {
-          final f = selects[si];
-          final isLastSelect = isLastCategory && si == selects.length - 1;
-          rows.add(Padding(
-            padding: const EdgeInsets.fromLTRB(AppSpace.cardPad, 10, AppSpace.cardPad, 0),
-            child: Builder(builder: (context) => AppText.meta(f.label, color: AppColors.of(context).muted)),
-          ));
-          rows.add(OptionList<String>(
-            options: f.options ?? const [],
-            value: catValues[f.label] as String?,
-            onChanged: (v) => _setField(cat.id, f.label, v),
-            getLabel: (v) => v,
-          ));
-          if (!isLastSelect) rows.add(const AppDivider());
-        }
-      }
+      rows.add(CheckRow(label: cat.name, checked: on, onToggle: () => _toggle(cat), last: true));
+      if (showFields) rows.add(_buildCategoryFieldsPanel(cat, catValues));
+      if (!isLastCategory) rows.add(const AppDivider());
     }
     return rows;
+  }
+
+  Widget _buildCategoryFieldsPanel(Category cat, Map<String, Object?> catValues) {
+    final inline = cat.fields.where((f) => f.type != 'select').toList();
+    final selects = cat.fields.where((f) => f.type == 'select').toList();
+    final panelRows = <Widget>[];
+
+    for (var fi = 0; fi < inline.length; fi++) {
+      final f = inline[fi];
+      final isLastInline = fi == inline.length - 1 && selects.isEmpty;
+      if (f.type == 'checkbox') {
+        panelRows.add(CheckRow(
+          label: f.label,
+          checked: catValues[f.label] == true,
+          onToggle: () => _setField(cat.id, f.label, !(catValues[f.label] == true)),
+          last: isLastInline,
+        ));
+      } else {
+        panelRows.add(AppField(
+          label: f.label,
+          unit: f.unit,
+          value: (catValues[f.label] as String?) ?? '',
+          onChanged: (v) => _setField(cat.id, f.label, v),
+          keyboardType: f.type == 'number' ? TextInputType.numberWithOptions(decimal: true) : TextInputType.text,
+          placeholder: f.unit != null ? 'e.g. 0.6' : '',
+          last: isLastInline,
+        ));
+      }
+    }
+
+    for (var si = 0; si < selects.length; si++) {
+      final f = selects[si];
+      final isLastSelect = si == selects.length - 1;
+      panelRows.add(Padding(
+        padding: const EdgeInsets.fromLTRB(AppSpace.cardPad, 10, AppSpace.cardPad, 0),
+        child: Builder(builder: (context) => AppText.meta(f.label, color: AppColors.of(context).muted)),
+      ));
+      panelRows.add(OptionList<String>(
+        options: f.options ?? const [],
+        value: catValues[f.label] as String?,
+        onChanged: (v) => _setField(cat.id, f.label, v),
+        getLabel: (v) => v,
+      ));
+      if (!isLastSelect) panelRows.add(const AppDivider());
+    }
+
+    return Builder(
+      builder: (context) => Container(
+        color: AppColors.of(context).surface,
+        padding: const EdgeInsets.only(left: 14),
+        child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: panelRows),
+      ),
+    );
   }
 }

@@ -15,8 +15,31 @@ class _Entry {
 class LogScreen extends StatelessWidget {
   final List<Vehicle> vehicles;
   final ValueChanged<String> onOpenVehicle;
+  final void Function(String vehicleId, String categoryId, String logId) onOpenLog;
+  final void Function(String vehicleId, String logId) onDeleteLog;
 
-  const LogScreen({super.key, required this.vehicles, required this.onOpenVehicle});
+  const LogScreen({
+    super.key,
+    required this.vehicles,
+    required this.onOpenVehicle,
+    required this.onOpenLog,
+    required this.onDeleteLog,
+  });
+
+  Future<bool> _confirmDeleteLog(BuildContext context) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Remove this entry?'),
+        content: const Text('This cannot be undone.'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
+          TextButton(onPressed: () => Navigator.pop(ctx, true), child: Text('Remove', style: TextStyle(color: AppColors.of(ctx).alert))),
+        ],
+      ),
+    );
+    return confirmed == true;
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -44,22 +67,34 @@ class LogScreen extends StatelessWidget {
                       AppCard(
                         children: [
                           for (var i = 0; i < entries.length; i++)
-                            CardRow(
-                              onPress: () => onOpenVehicle(entries[i].vehicle.id),
-                              dotColor: entries[i].vehicle.color ?? c.accent,
-                              left: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  AppText.row(entries[i].log.categoryName, color: c.ink),
-                                  Padding(
-                                    padding: const EdgeInsets.only(top: 2),
-                                    child: AppText.small(_subtitle(entries[i]), color: c.muted),
-                                  ),
-                                  PhotoThumbs(uris: entries[i].log.photos),
-                                ],
+                            Dismissible(
+                              key: ValueKey('log-${entries[i].log.id}'),
+                              direction: DismissDirection.endToStart,
+                              background: Container(
+                                alignment: Alignment.centerRight,
+                                padding: const EdgeInsets.symmetric(horizontal: 20),
+                                color: c.alert,
+                                child: const Icon(Icons.delete_outline, color: Colors.white),
                               ),
-                              right: formatDate(entries[i].log.date),
-                              divider: i < entries.length - 1,
+                              confirmDismiss: (_) => _confirmDeleteLog(context),
+                              onDismissed: (_) => onDeleteLog(entries[i].vehicle.id, entries[i].log.id),
+                              child: CardRow(
+                                onPress: () => onOpenLog(entries[i].vehicle.id, entries[i].log.categoryId, entries[i].log.id),
+                                dotColor: entries[i].vehicle.color ?? c.accent,
+                                left: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    AppText.row(entries[i].log.categoryName, color: c.ink),
+                                    Padding(
+                                      padding: const EdgeInsets.only(top: 2),
+                                      child: AppText.small(_subtitle(entries[i]), color: c.muted),
+                                    ),
+                                    PhotoThumbs(uris: entries[i].log.photos),
+                                  ],
+                                ),
+                                right: formatDate(entries[i].log.date),
+                                divider: i < entries.length - 1,
+                              ),
                             ),
                         ],
                       ),

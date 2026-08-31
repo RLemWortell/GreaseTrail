@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../data/config.dart';
+import '../data/rdw.dart';
 import '../models.dart';
 import '../theme.dart';
 import '../widgets/photos.dart';
@@ -42,6 +43,10 @@ class _AddVehicleScreenState extends State<AddVehicleScreen> {
   String _odo = '';
   List<String> _photos = [];
   int _stepIndex = 0;
+  String? _fuelType;
+  String _licensePlate = '';
+  bool _lookingUp = false;
+  String? _lookupError;
 
   @override
   void initState() {
@@ -60,13 +65,50 @@ class _AddVehicleScreenState extends State<AddVehicleScreen> {
 
   bool get _canCreate => _name.trim().isNotEmpty;
 
+  bool get _showFuelType => _configId == 'default' && fuelTypeCapableTypes.contains(_type);
+
   void _create() {
     if (!_canCreate) return;
     final cfg = _configId != 'default' ? widget.configs.where((x) => x.id == _configId).firstOrNull : null;
     final v = cfg != null
         ? vehicleFromConfig(cfg, _name.trim(), _model.trim(), double.tryParse(_odo) ?? 0)
-        : seedVehicle(_type, _name.trim(), _model.trim(), double.tryParse(_odo) ?? 0);
+        : seedVehicle(
+            _type,
+            _name.trim(),
+            _model.trim(),
+            double.tryParse(_odo) ?? 0,
+            fuelType: _showFuelType ? _fuelType : null,
+            licensePlate: _showFuelType && _licensePlate.trim().isNotEmpty ? _licensePlate.trim() : null,
+          );
     widget.onSave(v.copyWith(photos: _photos));
+  }
+
+  Future<void> _lookupPlate() async {
+    if (_licensePlate.trim().isEmpty || _lookingUp) return;
+    setState(() {
+      _lookingUp = true;
+      _lookupError = null;
+    });
+    try {
+      final info = await lookupKenteken(_licensePlate);
+      if (!mounted) return;
+      setState(() {
+        _lookingUp = false;
+        if (info == null) {
+          _lookupError = 'No vehicle found for this plate.';
+          return;
+        }
+        if (info.fuelType != null) _fuelType = info.fuelType;
+        final brandModel = [info.brand, info.model].where((s) => s != null && s.isNotEmpty).join(' ');
+        if (_model.trim().isEmpty && brandModel.isNotEmpty) _model = brandModel;
+      });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _lookingUp = false;
+        _lookupError = e is RdwLookupException ? e.message : 'Something went wrong looking up this plate.';
+      });
+    }
   }
 
   @override
@@ -136,10 +178,41 @@ class _AddVehicleScreenState extends State<AddVehicleScreen> {
                 placeholder: '0',
                 unit: 'km',
                 keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                last: true,
+                last: !(_showFuelType && isDutchLocale()),
                 onChanged: (v) => _odo = v,
               ),
+              if (_showFuelType && isDutchLocale())
+                AppField(
+                  label: 'License plate',
+                  value: _licensePlate,
+                  placeholder: 'e.g. GJF-15-G',
+                  onChanged: (v) => _licensePlate = v,
+                ),
+              if (_showFuelType && isDutchLocale())
+                CardRow(
+                  onPress: _lookingUp ? null : _lookupPlate,
+                  left: AppText.row(_lookingUp ? 'Looking up…' : 'Look up via RDW', color: c.accent),
+                  chevron: !_lookingUp,
+                  divider: false,
+                ),
             ]),
+            if (_lookupError != null)
+              Padding(
+                padding: const EdgeInsets.only(top: 8),
+                child: Text(_lookupError!, style: AppTypography.small.copyWith(color: c.alert)),
+              ),
+            if (_showFuelType) ...[
+              const SizedBox(height: AppSpace.block),
+              const Label('Fuel type', margin: EdgeInsets.only(bottom: 10)),
+              AppCard(children: [
+                OptionList<String>(
+                  options: const ['fuel', 'electric', 'hybrid'],
+                  value: _fuelType,
+                  onChanged: (v) => setState(() => _fuelType = v),
+                  getLabel: (v) => fuelTypeMeta[v]!.label,
+                ),
+              ]),
+            ],
             Padding(
               padding: const EdgeInsets.only(top: 16),
               child: Text(
