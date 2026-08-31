@@ -1,13 +1,13 @@
 {
   "schemaVersion": 2,
   "appName": "GreaseTrail",
-  "themeId": "clean-light",
+  "themeId": "workshop-neon",
   "connectedCanvas": false,
   "locales": [
     "en"
   ],
   "locale": "en",
-  "device": "ipad",
+  "device": "iphone",
   "orientation": "portrait",
   "appIcon": "/app-icon.png",
   "slidesByDevice": {
@@ -21,7 +21,44 @@
         "headline": {
           "en": "Never miss\na service again."
         },
-        "screenshot": "/screenshots/apple/iphone/{locale}/01.png"
+        "screenshot": "/screenshots/apple/iphone/{locale}/01.png",
+        "inverted": true,
+        "textElements": [
+          {
+            "id": "gear-back",
+            "text": {
+              "en": "⚙"
+            },
+            "transform": {
+              "x": -260,
+              "y": 1500,
+              "width": 1200,
+              "height": 1200,
+              "rotation": -18,
+              "zIndex": 1
+            },
+            "fontSize": 1150,
+            "color": "rgba(255,90,31,0.16)",
+            "align": "center"
+          },
+          {
+            "id": "badge-front",
+            "text": {
+              "en": "NO ACCOUNT · $0 FOREVER"
+            },
+            "transform": {
+              "x": 106,
+              "y": 800,
+              "width": 1108,
+              "height": 90,
+              "zIndex": 10
+            },
+            "fontSize": 40,
+            "fontWeight": 700,
+            "color": "#FF5A1F",
+            "align": "center"
+          }
+        ]
       },
       {
         "id": "gt_iphone_2",
@@ -30,32 +67,92 @@
           "en": "MAINTENANCE LOG"
         },
         "headline": {
-          "en": "Every fix,\nin one log."
+          "en": "Every fix.\nOne log."
         },
-        "screenshot": "/screenshots/apple/iphone/{locale}/02.png"
+        "screenshot": "/screenshots/apple/iphone/{locale}/02.png",
+        "inverted": true,
+        "textElements": [
+          {
+            "id": "gear-back",
+            "text": {
+              "en": "⚙"
+            },
+            "transform": {
+              "x": 750,
+              "y": -350,
+              "width": 950,
+              "height": 950,
+              "rotation": 20,
+              "zIndex": 1
+            },
+            "fontSize": 902,
+            "color": "rgba(255,90,31,0.13)",
+            "align": "center"
+          }
+        ]
       },
       {
         "id": "gt_iphone_3",
-        "layout": "device-bottom",
+        "layout": "device-top",
         "label": {
           "en": "PER VEHICLE"
         },
         "headline": {
-          "en": "One place for\nevery detail."
+          "en": "One place.\nEvery detail."
         },
-        "screenshot": "/screenshots/apple/iphone/{locale}/03.png"
+        "screenshot": "/screenshots/apple/iphone/{locale}/03.png",
+        "inverted": true,
+        "textElements": [
+          {
+            "id": "gear-back",
+            "text": {
+              "en": "⚙"
+            },
+            "transform": {
+              "x": -320,
+              "y": 1900,
+              "width": 1100,
+              "height": 1100,
+              "rotation": -12,
+              "zIndex": 1
+            },
+            "fontSize": 1045,
+            "color": "rgba(255,90,31,0.15)",
+            "align": "center"
+          }
+        ]
       },
       {
         "id": "gt_iphone_4",
-        "layout": "device-top",
+        "layout": "two-devices",
         "label": {
           "en": "MAKE IT YOURS"
         },
         "headline": {
-          "en": "Configs, colors,\nyour own setup."
+          "en": "Set up once.\nReady for anything."
         },
         "screenshot": "/screenshots/apple/iphone/{locale}/04.png",
-        "inverted": true
+        "screenshotSecondary": "/screenshots/apple/iphone/{locale}/03.png",
+        "inverted": true,
+        "textElements": [
+          {
+            "id": "gear-back",
+            "text": {
+              "en": "⚙"
+            },
+            "transform": {
+              "x": 650,
+              "y": 1950,
+              "width": 900,
+              "height": 900,
+              "rotation": 25,
+              "zIndex": 1
+            },
+            "fontSize": 855,
+            "color": "rgba(255,90,31,0.13)",
+            "align": "center"
+          }
+        ]
       },
       {
         "id": "gt_iphone_5",
@@ -64,9 +161,39 @@
           "en": "GET STARTED"
         },
         "headline": {
-          "en": "Add a vehicle\nin seconds."
+          "en": "Add a vehicle.\nZero hassle."
         },
-        "screenshot": "/screenshots/apple/iphone/{locale}/05.png"
+        "screenshot": "/screenshots/apple/iphone/{locale}/05.png",
+        "inverted": true,
+        "transforms": {
+          "caption": {
+            "x": 105.60000000000001,
+            "y": 229.44,
+            "width": 1108.8,
+            "height": 803.04,
+            "rotation": 0,
+            "zIndex": 4
+          }
+        },
+        "textElements": [
+          {
+            "id": "gear-back",
+            "text": {
+              "en": "⚙"
+            },
+            "transform": {
+              "x": 500,
+              "y": -300,
+              "width": 1000,
+              "height": 1000,
+              "rotation": 12,
+              "zIndex": 1
+            },
+            "fontSize": 950,
+            "color": "rgba(255,90,31,0.14)",
+            "align": "center"
+          }
+        ]
       }
     ],
     "android": [],
@@ -80,7 +207,44 @@
         "headline": {
           "en": "Your whole garage,\non the big screen."
         },
-        "screenshot": "/screenshots/apple/ipad/{locale}/01.png"
+        "screenshot": "/screenshots/apple/ipad/{locale}/01.png",
+        "inverted": true,
+        "textElements": [
+          {
+            "id": "gear-back",
+            "text": {
+              "en": "⚙"
+            },
+            "transform": {
+              "x": -300,
+              "y": 1400,
+              "width": 1600,
+              "height": 1600,
+              "rotation": -15,
+              "zIndex": 1
+            },
+            "fontSize": 1500,
+            "color": "rgba(255,90,31,0.15)",
+            "align": "center"
+          },
+          {
+            "id": "badge-front",
+            "text": {
+              "en": "NO ACCOUNT · $0 FOREVER"
+            },
+            "transform": {
+              "x": 200,
+              "y": 950,
+              "width": 1664,
+              "height": 110,
+              "zIndex": 10
+            },
+            "fontSize": 46,
+            "fontWeight": 700,
+            "color": "#FF5A1F",
+            "align": "center"
+          }
+        ]
       },
       {
         "id": "gt_ipad_2",
@@ -91,7 +255,27 @@
         "headline": {
           "en": "Every detail,\none tap away."
         },
-        "screenshot": "/screenshots/apple/ipad/{locale}/02.png"
+        "screenshot": "/screenshots/apple/ipad/{locale}/02.png",
+        "inverted": true,
+        "textElements": [
+          {
+            "id": "gear-back",
+            "text": {
+              "en": "⚙"
+            },
+            "transform": {
+              "x": 1300,
+              "y": -400,
+              "width": 1300,
+              "height": 1300,
+              "rotation": 18,
+              "zIndex": 1
+            },
+            "fontSize": 1235,
+            "color": "rgba(255,90,31,0.13)",
+            "align": "center"
+          }
+        ]
       },
       {
         "id": "gt_ipad_3",
@@ -103,7 +287,26 @@
           "en": "Set up once,\nready every time."
         },
         "screenshot": "/screenshots/apple/ipad/{locale}/03.png",
-        "inverted": true
+        "inverted": true,
+        "textElements": [
+          {
+            "id": "gear-back",
+            "text": {
+              "en": "⚙"
+            },
+            "transform": {
+              "x": -350,
+              "y": 1900,
+              "width": 1400,
+              "height": 1400,
+              "rotation": -14,
+              "zIndex": 1
+            },
+            "fontSize": 1330,
+            "color": "rgba(255,90,31,0.15)",
+            "align": "center"
+          }
+        ]
       }
     ],
     "android-7": [],

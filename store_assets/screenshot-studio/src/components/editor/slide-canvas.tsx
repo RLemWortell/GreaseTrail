@@ -731,8 +731,9 @@ function SlideBackground({
         color: inverted ? theme.fgAlt : theme.fg,
       }}
     >
-      <Blob cW={cW} color={theme.accent} x={-15} y={-10} size={55} opacity={inverted ? 0.25 : 0.32} />
-      <Blob cW={cW} color={theme.accent} x={70} y={75} size={45} opacity={inverted ? 0.18 : 0.25} />
+      <Blob cW={cW} color={theme.accent} x={-20} y={-15} size={70} opacity={inverted ? 0.38 : 0.32} />
+      <Blob cW={cW} color={theme.accent} x={65} y={70} size={60} opacity={inverted ? 0.3 : 0.25} />
+      {inverted && <Blob cW={cW} color={theme.accent} x={30} y={40} size={40} opacity={0.14} />}
     </div>
   );
 }

@@ -134,6 +134,16 @@ export const THEMES: Record<string, Theme> = {
     accent: "#B8794A",
     muted: "#65736B",
   },
+  "workshop-neon": {
+    id: "workshop-neon",
+    name: "Workshop Neon",
+    bg: "#F6EFE4",
+    bgAlt: "#14110D",
+    fg: "#1C1712",
+    fgAlt: "#FBF3E7",
+    accent: "#FF5A1F",
+    muted: "#8A7F6E",
+  },
 };
 
 export function themeById(themeId: string | undefined): Theme {

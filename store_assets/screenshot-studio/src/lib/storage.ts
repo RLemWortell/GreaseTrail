@@ -179,7 +179,17 @@ function applyUpdater(updater: Updater, prev: ProjectState): ProjectState {
 }
 
 export function useProject() {
-  const [state, _setState] = useState<ProjectState>(DEFAULT_PROJECT);
+  // localStorage is read once as the lazy initial state, purely for instant
+  // paint before the file round-trip resolves. It must NOT be re-applied
+  // later: doing it from inside the hydrate effect (as a plain `_setState`
+  // call) raced the async file load under React StrictMode's dev-mode double
+  // effect invocation — the second invocation's synchronous localStorage set
+  // could land *after* the first invocation's file load had already marked
+  // the project hydrated, so the debounced autosave picked up the stale
+  // cached state and clobbered the on-disk (git-tracked) project file with
+  // it. Lazy initial state runs once for the state itself and is never
+  // reapplied, so there's no later moment for it to race the file load.
+  const [state, _setState] = useState<ProjectState>(() => loadFromLocalStorage() || DEFAULT_PROJECT);
   const [hydrated, setHydrated] = useState(false);
   const [fileReady, setFileReady] = useState(false);
   const [savedAt, setSavedAt] = useState<number | null>(null);
@@ -192,12 +202,10 @@ export function useProject() {
   const futureRef = useRef<ProjectState[]>([]);
   const lastPushAt = useRef(0);
 
-  // Hydrate: prefer file (git-tracked) → localStorage (cache) → defaults.
-  // localStorage is consulted first for instant paint, then file overwrites if present.
+  // Hydrate: the file (git-tracked) is the single source of truth once it
+  // resolves — it always wins over the localStorage-seeded initial state.
   useEffect(() => {
     let cancelled = false;
-    const cached = loadFromLocalStorage();
-    if (cached) _setState(cached);
 
     void (async () => {
       const fromFile = await loadFromFile();
