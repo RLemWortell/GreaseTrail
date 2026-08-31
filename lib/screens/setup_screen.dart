@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../data/config.dart';
 import '../data/export.dart';
@@ -67,6 +68,18 @@ class _SetupScreenState extends State<SetupScreen> {
     }
   }
 
+  Future<void> _openKoFi() async {
+    final uri = Uri.parse('https://ko-fi.com/lemairetech');
+    try {
+      final opened = await launchUrl(uri, mode: LaunchMode.externalApplication);
+      if (!opened) {
+        await _notify('Could not open link', 'Try visiting ko-fi.com/lemairetech in your browser instead.');
+      }
+    } catch (e) {
+      await _notify('Could not open link', '$e');
+    }
+  }
+
   Future<void> _importFile() async {
     try {
       final cfg = await importConfigFile();
@@ -96,7 +109,10 @@ class _SetupScreenState extends State<SetupScreen> {
                 if (widget.vehicles.isEmpty)
                   Padding(
                     padding: const EdgeInsets.symmetric(vertical: AppSpace.rowY),
-                    child: Text('No vehicles yet — tap + to add one.', style: AppTypography.small.copyWith(color: c.muted)),
+                    child: Text(
+                      'No vehicles yet — tap + to add one.',
+                      style: AppTypography.small.copyWith(color: c.muted),
+                    ),
                   )
                 else
                   AppCard(
@@ -116,20 +132,22 @@ class _SetupScreenState extends State<SetupScreen> {
                                 color: widget.vehicles[i].color,
                               ),
                               const SizedBox(width: 12),
-                              Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  AppText.title(widget.vehicles[i].name, color: c.ink),
-                                  Padding(
-                                    padding: const EdgeInsets.only(top: 2),
-                                    child: AppText.small(
-                                      '${widget.vehicles[i].model.isNotEmpty ? '${widget.vehicles[i].model}  ·  ' : ''}'
-                                      '${typeMeta[widget.vehicles[i].type]?.label ?? widget.vehicles[i].type}  ·  '
-                                      '${formatOdo(widget.vehicles[i].odometer)} km',
-                                      color: c.muted,
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    AppText.title(widget.vehicles[i].name, color: c.ink),
+                                    Padding(
+                                      padding: const EdgeInsets.only(top: 2),
+                                      child: AppText.small(
+                                        '${widget.vehicles[i].model.isNotEmpty ? '${widget.vehicles[i].model}  ·  ' : ''}'
+                                        '${typeMeta[widget.vehicles[i].type]?.label ?? widget.vehicles[i].type}  ·  '
+                                        '${formatOdo(widget.vehicles[i].odometer)} km',
+                                        color: c.muted,
+                                      ),
                                     ),
-                                  ),
-                                ],
+                                  ],
+                                ),
                               ),
                             ],
                           ),
@@ -172,8 +190,18 @@ class _SetupScreenState extends State<SetupScreen> {
                 AppCard(
                   margin: const EdgeInsets.only(top: 14),
                   children: [
-                    CardRow(onPress: () => _runExport('json', exportJson), chevron: true, left: 'JSON backup', right: _busy == 'json' ? '…' : 'Full data'),
-                    CardRow(onPress: () => _runExport('csv', exportCsv), chevron: true, left: 'CSV log', right: _busy == 'csv' ? '…' : 'Spreadsheet'),
+                    CardRow(
+                      onPress: () => _runExport('json', exportJson),
+                      chevron: true,
+                      left: 'JSON backup',
+                      right: _busy == 'json' ? '…' : 'Full data',
+                    ),
+                    CardRow(
+                      onPress: () => _runExport('csv', exportCsv),
+                      chevron: true,
+                      left: 'CSV log',
+                      right: _busy == 'csv' ? '…' : 'Spreadsheet',
+                    ),
                     CardRow(
                       onPress: () => setState(() => _pdfPick = !_pdfPick),
                       chevron: true,
@@ -196,7 +224,10 @@ class _SetupScreenState extends State<SetupScreen> {
                       ),
                       for (var i = 0; i < widget.vehicles.length; i++)
                         CardRow(
-                          onPress: () => _runExport('pdf-${widget.vehicles[i].id}', (vs, ctx) => exportPdf([widget.vehicles[i]], ctx)),
+                          onPress: () => _runExport(
+                            'pdf-${widget.vehicles[i].id}',
+                            (vs, ctx) => exportPdf([widget.vehicles[i]], ctx),
+                          ),
                           chevron: true,
                           left: widget.vehicles[i].name,
                           right: _busy == 'pdf-${widget.vehicles[i].id}' ? '…' : null,
@@ -236,7 +267,19 @@ class _SetupScreenState extends State<SetupScreen> {
                 ),
                 const SizedBox(height: AppSpace.block),
                 const SectionHeader('About'),
-                AppCard(margin: const EdgeInsets.only(top: 14), children: const [CardRow(left: 'GreaseTrail', right: '1.0', divider: false)]),
+                AppCard(
+                  margin: const EdgeInsets.only(top: 14),
+                  children: [
+                    const CardRow(left: 'GreaseTrail', right: '1.2.0'),
+                    CardRow(
+                      onPress: _openKoFi,
+                      chevron: true,
+                      left: 'Support the developer',
+                      right: 'Ko-fi',
+                      divider: false,
+                    ),
+                  ],
+                ),
               ],
             ),
           ),

@@ -56,6 +56,9 @@ dependencies:
   # HTTP client, used for the RDW license-plate lookup.
   http: ^1.2.2
 
+  # Opens external links (e.g. the Ko-fi support link) in the system browser.
+  url_launcher: ^6.3.1
+
 dev_dependencies:
   flutter_test:
     sdk: flutter
