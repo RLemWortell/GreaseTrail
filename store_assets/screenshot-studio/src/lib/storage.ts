@@ -126,17 +126,36 @@ function loadFromLocalStorage(): ProjectState | null {
   }
 }
 
+async function fetchProjectOnce(): Promise<
+  { ok: true; state: ProjectState | null } | { ok: false; error: string }
+> {
+  const resp = await fetch("/api/project", { cache: "no-store" });
+  if (!resp.ok) return { ok: false, error: `HTTP ${resp.status}` };
+  const json = (await resp.json()) as { ok: boolean; state: Partial<ProjectState> | null };
+  if (!json.ok) return { ok: false, error: "Project response was not ok" };
+  if (!json.state) return { ok: true, state: null };
+  return { ok: true, state: mergeWithDefaults(json.state) };
+}
+
 async function loadFromFile(): Promise<
   { ok: true; state: ProjectState | null } | { ok: false; error: string }
 > {
   if (typeof window === "undefined") return { ok: false, error: "Window is not available" };
   try {
-    const resp = await fetch("/api/project", { cache: "no-store" });
-    if (!resp.ok) return { ok: false, error: `HTTP ${resp.status}` };
-    const json = (await resp.json()) as { ok: boolean; state: Partial<ProjectState> | null };
-    if (!json.ok) return { ok: false, error: "Project response was not ok" };
-    if (!json.state) return { ok: true, state: null };
-    return { ok: true, state: mergeWithDefaults(json.state) };
+    const first = await fetchProjectOnce();
+    // A `state: null` response means "no project file on disk yet" — but a
+    // dev-server recompile (e.g. right after `next dev` starts, or after a
+    // dependency install) can transiently make the API route look like that
+    // even though the file exists. Since this result gets autosaved right
+    // back to disk once hydrated, trusting a false negative here would
+    // silently replace a real project with the empty starter deck. One retry
+    // after a short delay is enough to ride out that window without slowing
+    // down the common case (a genuinely new project stays null both times).
+    if (first.ok && first.state === null) {
+      await new Promise((resolve) => setTimeout(resolve, 400));
+      return await fetchProjectOnce();
+    }
+    return first;
   } catch {
     return { ok: false, error: "Project file could not be loaded" };
   }
