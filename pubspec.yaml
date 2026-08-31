@@ -75,6 +75,7 @@ dev_dependencies:
 
 flutter_launcher_icons:
   image_path: "assets/icon.png"
+  image_path_ios_dark_transparent: "assets/icon-dark.png"
   ios: true
   android: false
   remove_alpha_ios: true
