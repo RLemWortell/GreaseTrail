@@ -42,7 +42,11 @@ class _AddLogScreenState extends State<AddLogScreen> {
     _values = {
       for (final f in widget.category.fields)
         f.label: existing != null
-            ? (f.type == 'checkbox' ? existing.values[f.label] == true : (existing.values[f.label] as String?) ?? '')
+            ? (f.type == 'checkbox'
+                ? existing.values[f.label] == true
+                : f.type == 'status'
+                    ? statusValueOf(existing.values[f.label])
+                    : (existing.values[f.label] as String?) ?? '')
             : (f.type == 'checkbox' ? false : ''),
     };
     _note = existing?.note ?? '';
@@ -113,14 +117,23 @@ class _AddLogScreenState extends State<AddLogScreen> {
                               onToggle: () => setState(() => _values[inlineFields[i].label] = !(_values[inlineFields[i].label] == true)),
                               last: i == inlineFields.length - 1,
                             )
-                          : AppField(
-                              label: inlineFields[i].label,
-                              unit: inlineFields[i].unit,
-                              value: (_values[inlineFields[i].label] as String?) ?? '',
-                              onChanged: (v) => setState(() => _values[inlineFields[i].label] = v),
-                              keyboardType: inlineFields[i].type == 'number' ? TextInputType.numberWithOptions(decimal: true) : TextInputType.text,
-                              placeholder: inlineFields[i].unit != null ? 'e.g. 0.6' : '',
-                              last: i == inlineFields.length - 1,
+                          : inlineFields[i].type == 'status'
+                              ? StatusRow(
+                                  label: inlineFields[i].label,
+                                  value: (_values[inlineFields[i].label] as String?) ?? '',
+                                  onChanged: (v) => setState(() => _values[inlineFields[i].label] = v),
+                                  last: i == inlineFields.length - 1,
+                                )
+                              : AppField(
+                                  label: inlineFields[i].label,
+                                  unit: inlineFields[i].unit,
+                                  value: (_values[inlineFields[i].label] as String?) ?? '',
+                                  onChanged: (v) => setState(() => _values[inlineFields[i].label] = v),
+                                  keyboardType: inlineFields[i].type == 'number'
+                                      ? TextInputType.numberWithOptions(decimal: true)
+                                      : TextInputType.text,
+                                  placeholder: inlineFields[i].unit != null ? 'e.g. 0.6' : '',
+                                  last: i == inlineFields.length - 1,
                             ),
                   ],
                 ),

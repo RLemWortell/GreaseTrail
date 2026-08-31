@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 
 import '../format.dart';
+import '../models.dart';
 import '../theme.dart';
 
 class Label extends StatelessWidget {
@@ -325,6 +326,98 @@ class CardRow extends StatelessWidget {
         onPress != null ? InkWell(onTap: onPress, child: content) : content,
         if (divider) const AppDivider(),
       ],
+    );
+  }
+}
+
+/// A labelled row with a 3-way pill choice ([statusOptions]) for checklist
+/// items where a plain checkbox can't say whether something was found fine,
+/// flagged, or actually serviced. Tapping the active pill clears it back to
+/// unset.
+class StatusRow extends StatelessWidget {
+  final String label;
+  final String value;
+  final ValueChanged<String> onChanged;
+  final bool last;
+
+  const StatusRow({super.key, required this.label, required this.value, required this.onChanged, this.last = false});
+
+  Color _fillFor(String option, AppColors c) => switch (option) {
+        'Attention' => c.soon,
+        'Replaced' => c.accent,
+        _ => c.dotOff,
+      };
+
+  Color _textFor(String option, AppColors c) => option == 'OK' ? c.ink : c.iconFg;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = AppColors.of(context);
+    return Column(
+      children: [
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: AppSpace.cardPad, vertical: AppSpace.rowY),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              AppText.row(label, color: c.ink),
+              const SizedBox(height: 10),
+              Row(
+                children: [
+                  for (var i = 0; i < statusOptions.length; i++) ...[
+                    if (i > 0) const SizedBox(width: 8),
+                    Expanded(
+                      child: _StatusPill(
+                        label: statusOptions[i],
+                        selected: value == statusOptions[i],
+                        fill: _fillFor(statusOptions[i], c),
+                        textColor: _textFor(statusOptions[i], c),
+                        onTap: () => onChanged(value == statusOptions[i] ? '' : statusOptions[i]),
+                      ),
+                    ),
+                  ],
+                ],
+              ),
+            ],
+          ),
+        ),
+        if (!last) const AppDivider(),
+      ],
+    );
+  }
+}
+
+class _StatusPill extends StatelessWidget {
+  final String label;
+  final bool selected;
+  final Color fill;
+  final Color textColor;
+  final VoidCallback onTap;
+
+  const _StatusPill({required this.label, required this.selected, required this.fill, required this.textColor, required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    final c = AppColors.of(context);
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(8),
+      child: Container(
+        height: 34,
+        alignment: Alignment.center,
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(8),
+          color: selected ? fill : Colors.transparent,
+          border: selected ? null : Border.all(color: c.border),
+        ),
+        child: Text(
+          label,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          textAlign: TextAlign.center,
+          style: AppTypography.small.copyWith(color: selected ? textColor : c.muted, fontWeight: FontWeight.w600),
+        ),
+      ),
     );
   }
 }

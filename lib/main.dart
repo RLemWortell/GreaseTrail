@@ -33,6 +33,7 @@ class GreaseTrailApp extends StatefulWidget {
 
 class _GreaseTrailAppState extends State<GreaseTrailApp> {
   Color? _accent;
+  bool? _rdwSetting;
 
   @override
   void initState() {
@@ -40,11 +41,19 @@ class _GreaseTrailAppState extends State<GreaseTrailApp> {
     loadAccentColor().then((value) {
       if (mounted && value != null) setState(() => _accent = Color(value));
     });
+    loadRdwSetting().then((value) {
+      if (mounted) setState(() => _rdwSetting = value);
+    });
   }
 
   void _setAccent(Color? color) {
     setState(() => _accent = color);
     saveAccentColor(color?.toARGB32());
+  }
+
+  void _setRdwSetting(bool? value) {
+    setState(() => _rdwSetting = value);
+    saveRdwSetting(value);
   }
 
   ThemeData _theme(AppColors c, Brightness brightness) => ThemeData(
@@ -64,7 +73,12 @@ class _GreaseTrailAppState extends State<GreaseTrailApp> {
       theme: _theme(AppColors.light, Brightness.light),
       darkTheme: _theme(AppColors.dark, Brightness.dark),
       builder: (context, child) => AccentScope(accent: _accent, child: child!),
-      home: RootPage(accent: _accent, onAccentChange: _setAccent),
+      home: RootPage(
+        accent: _accent,
+        onAccentChange: _setAccent,
+        rdwSetting: _rdwSetting,
+        onRdwSettingChange: _setRdwSetting,
+      ),
     );
   }
 }
@@ -134,8 +148,16 @@ class _BackTarget {
 class RootPage extends StatefulWidget {
   final Color? accent;
   final ValueChanged<Color?> onAccentChange;
+  final bool? rdwSetting;
+  final ValueChanged<bool?> onRdwSettingChange;
 
-  const RootPage({super.key, required this.accent, required this.onAccentChange});
+  const RootPage({
+    super.key,
+    required this.accent,
+    required this.onAccentChange,
+    required this.rdwSetting,
+    required this.onRdwSettingChange,
+  });
 
   @override
   State<RootPage> createState() => _RootPageState();
@@ -363,6 +385,8 @@ class _RootPageState extends State<RootPage> {
               onOpenConfig: (id) => _navigate(ConfigRoute(id)),
               accent: widget.accent,
               onAccentChange: widget.onAccentChange,
+              rdwSetting: widget.rdwSetting,
+              onRdwSettingChange: widget.onRdwSettingChange,
             ),
         };
         return SafeArea(
@@ -383,6 +407,7 @@ class _RootPageState extends State<RootPage> {
             configs: _configs,
             initialConfigId: configId,
             initialType: vehicleType,
+            rdwSetting: widget.rdwSetting,
             onBack: _goBack,
             onSave: (v) {
               _lastNavWasBack = false;

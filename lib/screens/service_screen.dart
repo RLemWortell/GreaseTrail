@@ -176,6 +176,13 @@ class _ServiceScreenState extends State<ServiceScreen> {
           onToggle: () => _setField(cat.id, f.label, !(catValues[f.label] == true)),
           last: isLastInline,
         ));
+      } else if (f.type == 'status') {
+        panelRows.add(StatusRow(
+          label: f.label,
+          value: (catValues[f.label] as String?) ?? '',
+          onChanged: (v) => _setField(cat.id, f.label, v),
+          last: isLastInline,
+        ));
       } else {
         panelRows.add(AppField(
           label: f.label,

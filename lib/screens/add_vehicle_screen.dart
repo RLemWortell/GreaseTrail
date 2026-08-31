@@ -21,6 +21,7 @@ class AddVehicleScreen extends StatefulWidget {
   final List<GtConfig> configs;
   final String? initialConfigId;
   final String? initialType;
+  final bool? rdwSetting;
 
   const AddVehicleScreen({
     super.key,
@@ -29,6 +30,7 @@ class AddVehicleScreen extends StatefulWidget {
     this.configs = const [],
     this.initialConfigId,
     this.initialType,
+    this.rdwSetting,
   });
 
   @override
@@ -67,6 +69,8 @@ class _AddVehicleScreenState extends State<AddVehicleScreen> {
 
   bool get _showFuelType => _configId == 'default' && fuelTypeCapableTypes.contains(_type);
 
+  bool get _showRdw => _showFuelType && (widget.rdwSetting ?? isDutchLocale());
+
   void _create() {
     if (!_canCreate) return;
     final cfg = _configId != 'default' ? widget.configs.where((x) => x.id == _configId).firstOrNull : null;
@@ -78,7 +82,7 @@ class _AddVehicleScreenState extends State<AddVehicleScreen> {
             _model.trim(),
             double.tryParse(_odo) ?? 0,
             fuelType: _showFuelType ? _fuelType : null,
-            licensePlate: _showFuelType && _licensePlate.trim().isNotEmpty ? _licensePlate.trim() : null,
+            licensePlate: _showRdw && _licensePlate.trim().isNotEmpty ? _licensePlate.trim() : null,
           );
     widget.onSave(v.copyWith(photos: _photos));
   }
@@ -178,17 +182,17 @@ class _AddVehicleScreenState extends State<AddVehicleScreen> {
                 placeholder: '0',
                 unit: 'km',
                 keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                last: !(_showFuelType && isDutchLocale()),
+                last: !_showRdw,
                 onChanged: (v) => _odo = v,
               ),
-              if (_showFuelType && isDutchLocale())
+              if (_showRdw)
                 AppField(
                   label: 'License plate',
                   value: _licensePlate,
                   placeholder: 'e.g. GJF-15-G',
                   onChanged: (v) => _licensePlate = v,
                 ),
-              if (_showFuelType && isDutchLocale())
+              if (_showRdw)
                 CardRow(
                   onPress: _lookingUp ? null : _lookupPlate,
                   left: AppText.row(_lookingUp ? 'Looking up…' : 'Look up via RDW', color: c.accent),

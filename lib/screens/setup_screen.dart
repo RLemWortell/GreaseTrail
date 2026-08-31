@@ -3,6 +3,7 @@ import 'package:url_launcher/url_launcher.dart';
 
 import '../data/config.dart';
 import '../data/export.dart';
+import '../data/rdw.dart';
 import '../format.dart';
 import '../models.dart';
 import '../theme.dart';
@@ -18,6 +19,8 @@ class SetupScreen extends StatefulWidget {
   final ValueChanged<String> onOpenConfig;
   final Color? accent;
   final ValueChanged<Color?> onAccentChange;
+  final bool? rdwSetting;
+  final ValueChanged<bool?> onRdwSettingChange;
 
   const SetupScreen({
     super.key,
@@ -30,6 +33,8 @@ class SetupScreen extends StatefulWidget {
     required this.onOpenConfig,
     required this.accent,
     required this.onAccentChange,
+    required this.rdwSetting,
+    required this.onRdwSettingChange,
   });
 
   @override
@@ -262,6 +267,31 @@ class _SetupScreenState extends State<SetupScreen> {
                   padding: const EdgeInsets.only(top: 10),
                   child: Text(
                     'Vehicles can override this with their own color — see a vehicle\'s Manage screen.',
+                    style: AppTypography.small.copyWith(color: c.muted, height: 1.3),
+                  ),
+                ),
+                const SizedBox(height: AppSpace.block),
+                const SectionHeader('RDW lookup'),
+                AppCard(
+                  margin: const EdgeInsets.only(top: 14),
+                  children: [
+                    OptionList<bool?>(
+                      options: const [null, true, false],
+                      value: widget.rdwSetting,
+                      onChanged: widget.onRdwSettingChange,
+                      getLabel: (v) => switch (v) {
+                        null => 'Automatic',
+                        true => 'Always on',
+                        false => 'Off',
+                      },
+                    ),
+                  ],
+                ),
+                Padding(
+                  padding: const EdgeInsets.only(top: 10),
+                  child: Text(
+                    'Shows a license plate lookup when adding a car, motorcycle, or scooter. '
+                    "Automatic uses your device's region setting; ${isDutchLocale() ? 'currently on' : 'currently off'}.",
                     style: AppTypography.small.copyWith(color: c.muted, height: 1.3),
                   ),
                 ),

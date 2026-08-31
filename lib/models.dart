@@ -17,7 +17,7 @@ class FieldDef {
   final String id;
   final String label;
   final String? unit;
-  final String type; // number | text | checkbox | select
+  final String type; // number | text | checkbox | select | status
   final List<String>? options;
 
   FieldDef({required this.label, this.unit, this.type = 'number', this.options, String? id}) : id = id ?? uid();
@@ -49,7 +49,21 @@ const fieldTypeOptions = [
   FieldTypeOption('number', 'Number'),
   FieldTypeOption('text', 'Text'),
   FieldTypeOption('checkbox', 'Checkbox'),
+  FieldTypeOption('status', 'Status check'),
 ];
+
+/// The three outcomes a 'status' field can be set to — inspected and fine,
+/// inspected but flagged, or serviced/replaced during this visit.
+const statusOptions = ['OK', 'Attention', 'Replaced'];
+
+/// Reads a 'status' field's stored value. Older log entries recorded these
+/// as a plain bool (from when they were 'checkbox' fields) — `true` maps to
+/// the first status ('OK') so existing history still reads sensibly.
+String statusValueOf(Object? raw) {
+  if (raw is String) return raw;
+  if (raw is bool) return raw ? statusOptions.first : '';
+  return '';
+}
 
 class Category {
   final String id;
@@ -420,7 +434,7 @@ List<Category> _carTemplates(String? fuelType) {
     if (!isElectric) Category(name: 'Coolant', fields: [FieldDef(label: 'Topped up', unit: 'L')], intervalMonths: 24),
     Category(
       name: 'Wiper blades',
-      fields: [FieldDef(label: 'Front', type: 'checkbox'), FieldDef(label: 'Rear', type: 'checkbox')],
+      fields: [FieldDef(label: 'Front', type: 'status'), FieldDef(label: 'Rear', type: 'status')],
       intervalMonths: 12,
     ),
   ];
@@ -432,7 +446,7 @@ List<Category> _carTemplates(String? fuelType) {
 /// matches what a garage would actually run through. No intervals — these
 /// are checked together during the major service, not tracked individually.
 List<Category> _carMajorServiceCategories(String? fuelType) {
-  FieldDef check(String label) => FieldDef(label: label, type: 'checkbox');
+  FieldDef check(String label) => FieldDef(label: label, type: 'status');
   switch (fuelType) {
     case 'electric':
       return [
@@ -654,7 +668,7 @@ List<Category> _carMajorServiceCategories(String? fuelType) {
 /// check between major services, not a full teardown. No intervals, same
 /// reasoning as [_carMajorServiceCategories].
 List<Category> _carMinorServiceCategories(String? fuelType) {
-  FieldDef check(String label) => FieldDef(label: label, type: 'checkbox');
+  FieldDef check(String label) => FieldDef(label: label, type: 'status');
   switch (fuelType) {
     case 'electric':
       return [

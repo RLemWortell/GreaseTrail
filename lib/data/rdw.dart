@@ -1,11 +1,19 @@
 import 'dart:convert';
-import 'dart:ui';
+import 'dart:io';
 
 import 'package:http/http.dart' as http;
 
 /// True when the device's region is the Netherlands — used to gate the
 /// kenteken lookup UI, since RDW open data only knows Dutch plates.
-bool isDutchLocale() => PlatformDispatcher.instance.locale.countryCode == 'NL';
+///
+/// Uses `Platform.localeName` (backed by `NSLocale.currentLocale` on iOS)
+/// rather than `PlatformDispatcher.instance.locale`, since the latter tracks
+/// the device's preferred *language* list and doesn't reliably reflect a
+/// Region setting picked independently of language.
+bool isDutchLocale() {
+  final parts = Platform.localeName.split(RegExp(r'[_-]'));
+  return parts.length > 1 && parts[1].toUpperCase() == 'NL';
+}
 
 class RdwVehicleInfo {
   final String? brand;

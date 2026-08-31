@@ -7,6 +7,7 @@ import 'models.dart';
 const _kVehiclesKey = 'greasetrail:vehicles:v1';
 const _kConfigsKey = 'greasetrail:configs:v1';
 const _kAccentKey = 'greasetrail:accent:v1';
+const _kRdwKey = 'greasetrail:rdw:v1';
 
 Future<int?> loadAccentColor() async {
   try {
@@ -28,6 +29,30 @@ Future<void> saveAccentColor(int? value) async {
     }
   } catch (e) {
     debugPrintWarning('GreaseTrail: failed to save accent color: $e');
+  }
+}
+
+/// null = automatic (follow device region), true = always on, false = off.
+Future<bool?> loadRdwSetting() async {
+  try {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getBool(_kRdwKey);
+  } catch (e) {
+    debugPrintWarning('GreaseTrail: failed to load RDW setting: $e');
+    return null;
+  }
+}
+
+Future<void> saveRdwSetting(bool? value) async {
+  try {
+    final prefs = await SharedPreferences.getInstance();
+    if (value == null) {
+      await prefs.remove(_kRdwKey);
+    } else {
+      await prefs.setBool(_kRdwKey, value);
+    }
+  } catch (e) {
+    debugPrintWarning('GreaseTrail: failed to save RDW setting: $e');
   }
 }
 

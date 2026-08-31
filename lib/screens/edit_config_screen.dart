@@ -208,7 +208,7 @@ class _EditConfigScreenState extends State<EditConfigScreen> {
           AppField(
             label: 'Field name',
             value: form.label,
-            placeholder: form.type == 'checkbox' ? 'e.g. Front' : 'e.g. Torque',
+            placeholder: form.type == 'checkbox' || form.type == 'status' ? 'e.g. Front' : 'e.g. Torque',
             onChanged: (v) => form.label = v,
           ),
           Padding(
